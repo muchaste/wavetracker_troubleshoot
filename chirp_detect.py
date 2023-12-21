@@ -1,4 +1,3 @@
-import sys
 import glob
 import os
 import multiprocessing
@@ -8,12 +7,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from thunderfish.dataloader import DataLoader as open_data
-from thunderfish.powerspectrum import decibel, spectrogram, next_power_of_two, nfft
+from thunderfish.powerspectrum import decibel, spectrogram
 from functools import partial
-from IPython import embed
 from tqdm import tqdm
 
-import matplotlib.mlab as mlab
 
 # python3 chirp_detect.py /home/raab/data/2022_competition/2022-06-02-10_00/
 

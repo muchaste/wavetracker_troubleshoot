@@ -1,7 +1,5 @@
 import sys
 import os
-from fileinput import filename # for plot dir creation
-import time
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,18 +8,13 @@ import matplotlib.pyplot as plt
 # from .dataloader import open_data, fishgrid_grids, fishgrid_spacings
 # from .harmonics import harmonic_groups, fundamental_freqs
 # from .eventdetection import hist_threshold
-import multiprocessing
-from functools import partial
 
 
-from IPython import embed
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from PyQt5 import QtCore
 from PyQt5.QtCore import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 def decibel(power, ref_power=1.0, min_power=1e-20):
     """
@@ -1132,11 +1125,11 @@ class MainWindow(QMainWindow):
 
         try: # test if dir exists
             os.listdir(dir_path)
-        except (IOError, OSError) as e: # creates if not exists
+        except (IOError, OSError): # creates if not exists
             print('No existing plot directory found. Creating directory ...')
             try: 
                 os.mkdir(dir_path)
-            except (IOError, OSError) as e: # print error when fails 
+            except (IOError, OSError): # print error when fails 
                 print(color.RED+color.BOLD+'Error: Failed to create new plot directory!'+color.END)
             else: # check if dir was created
                 start = os.path.realpath('..')
@@ -1151,7 +1144,7 @@ class MainWindow(QMainWindow):
 
         try: # try saving image
             self.Plot.figure.savefig(img_path) # save plot
-        except (IOError, OSError) as e: # print error message if fails
+        except (IOError, OSError): # print error message if fails
             print(color.RED+color.BOLD+'Failed saving image!'+color.END)
         else:
             abs_img_path=os.path.abspath(img_path)

@@ -1,6 +1,5 @@
 import os
 import sys
-import argparse
 import multiprocessing
 
 import numpy as np
@@ -8,10 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 from functools import partial
-from IPython import embed
 from tqdm import tqdm
 from thunderfish.dataloader import DataLoader as open_data
-from thunderfish.powerspectrum import spectrogram, next_power_of_two, decibel
+from thunderfish.powerspectrum import spectrogram, decibel
 
 
 def load_data(folder):

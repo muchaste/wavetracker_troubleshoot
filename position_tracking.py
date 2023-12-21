@@ -3,9 +3,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from tqdm import tqdm
-from IPython import embed
 import matplotlib.animation as manimation
-import glob
 
 def load_data(folder):
     fund_v = np.load(os.path.join(folder, 'fund_v.npy'))

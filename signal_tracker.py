@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.patches import ConnectionPatch
 from plottools.colors import *
-from plottools.tag import tag
 colors_params(colors_muted, colors_tableau)
 import os
 import sys
@@ -322,7 +321,6 @@ class Display_agorithm():
         self.idx_comp_range = None
 
     def plot_a_error_dist(self):
-        from plottools.tag import tag
 
         X, Y = np.meshgrid(np.arange(8), np.arange(8))
 

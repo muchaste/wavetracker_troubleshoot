@@ -1,29 +1,23 @@
 import sys
 import os
-import time
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from .version import __version__
 from .powerspectrum import decibel, next_power_of_two, spectrogram
 from .dataloader import open_data, fishgrid_grids, fishgrid_spacings
 from .harmonics import harmonic_groups, fundamental_freqs
-from .eventdetection import hist_threshold
 
 import multiprocessing
 from functools import partial
 
 
-from IPython import embed
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from PyQt5 import QtCore
 from PyQt5.QtCore import *
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
-from matplotlib.widgets import RectangleSelector, EllipseSelector
 
 def position_tracking(sign_v, ident_v, elecs, elecs_spacing, n = 6, id = None):
     def get_elec_pos(elecs_y, elecs_x, elecs_y_spacing, elecs_x_spacing ):
