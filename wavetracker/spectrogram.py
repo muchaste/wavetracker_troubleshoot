@@ -1,6 +1,5 @@
 import os
 import argparse
-import time
 import multiprocessing
 import numpy as np
 from functools import partial, partialmethod
@@ -10,7 +9,7 @@ from tqdm import tqdm
 from .config import Configuration
 from .datahandler import open_raw_data
 
-from thunderfish.powerspectrum import get_window, decibel
+from thunderfish.powerspectrum import get_window
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 try:
@@ -92,9 +91,9 @@ def tensorflow_spec(data, samplerate, nfft, step, **kwargs):
                 Scales spectrogram that matches the the range if spectrograms returned by mlab_spec
 
         """
-        # ToDo: kill this whole approch and write all spectrogram anaylsis in pytorch (CPU and GPU functionality).
-
-        scaled_spectrogram = tf_spectrogram**2 * 4.05e-9
+        # TODO: kill this whole approch and write all spectrogram anaylsis in pytorch (CPU and GPU functionality).
+        scaled_spectrogram = tf_spectrogram**2 * 4.05e-9 # TODO: The result might change with different nfft and samplerate
+        # so this needs to be rewritten to be more general. Do this in line 103
         return scaled_spectrogram
 
     # Run the computation on the GPU
@@ -105,7 +104,7 @@ def tensorflow_spec(data, samplerate, nfft, step, **kwargs):
     ret_spectra = conversion_to_old_scale(spectra)
 
     # create frequency and time axis returned with the spectrogram
-    freqs = np.fft.fftfreq(nfft, 1 / samplerate)[:int(nfft / 2) + 1]
+    freqs = np.fft.fftfreq(nfft, 1 / samplerate)[:int(nfft / 2) + 1] # TODO: Check how this compares to my way 
     freqs[-1] = samplerate / 2
     times = np.linspace(0, int(tf.shape(data)[1]) / samplerate, int(spectra.shape[1]), endpoint=False)
 
@@ -370,7 +369,7 @@ class Spectrogram(object):
         if self.gpu:
             self.spec, self.spec_freqs, spec_times = tensorflow_spec(data_snippet, samplerate=self.samplerate,
                                                                      step=self.step, nfft = self.nfft, **self.kwargs)
-            self.spec = np.swapaxes(self.spec, 1, 2)
+            self.spec = np.swapaxes(self.spec, 1, 2) # TODO: Keep spec in gpu memory and swap axes there
             self.sum_spec = np.sum(self.spec, axis=0)
             self.itter_count += 1
         else:
@@ -501,7 +500,7 @@ def main():
     args.file = os.path.abspath(args.file)
     folder = os.path.split(args.file)[0]
 
-    if args.verbose >= 1: print(f'\n--- Running wavetracker.spectrogram ---')
+    if args.verbose >= 1: print('\n--- Running wavetracker.spectrogram ---')
 
     if args.verbose >= 1: print(f'{"Hardware used":^25}: {"GPU" if not (args.cpu and available_GPU) else "CPU"}')
 

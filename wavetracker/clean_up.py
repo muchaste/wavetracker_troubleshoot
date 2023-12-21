@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from thunderfish.powerspectrum import decibel
-from IPython import embed
 from tqdm import tqdm
 import sys
 

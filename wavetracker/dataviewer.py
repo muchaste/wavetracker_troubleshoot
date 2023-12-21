@@ -1,25 +1,17 @@
-import queue
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import sys
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
-from thunderfish.dataloader import DataLoader as open_data
-from IPython import embed
 from .config import Configuration
 from .spectrogram import *
 from .datahandler import *
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from PyQt5 import QtCore
 from PyQt5.QtCore import *
 import pyqtgraph as pg
-import time
-import queue
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 try:
     import tensorflow as tf

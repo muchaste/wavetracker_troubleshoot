@@ -1,16 +1,13 @@
 import sys
 import os
-import time
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from thunderfish.version import __version__
 from thunderfish.powerspectrum import decibel, next_power_of_two, spectrogram
 from thunderfish.dataloader import fishgrid_grids, fishgrid_spacings
 from thunderfish.dataloader import DataLoader as open_data
 from thunderfish.harmonics import harmonic_groups, fundamental_freqs
-from signal_tracker import freq_tracking_v5, plot_tracked_traces, Emit_progress
-from thunderfish.eventdetection import hist_threshold
+from signal_tracker import freq_tracking_v5
 
 import multiprocessing
 from functools import partial

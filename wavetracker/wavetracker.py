@@ -325,10 +325,10 @@ def main():
                             format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S',
                             level=20, encoding='utf-8')
     if logger:
-        logger.info(f'--- Running wavetracker.wavetracker ---')
+        logger.info('--- Running wavetracker.wavetracker ---')
         logger.info(f'{"Hardware used":^25}: {"GPU" if (~args.cpu and available_GPU) else "CPU"}')
     if args.verbose >= 1:
-        print(f'\n--- Running wavetracker.wavetracker ---')
+        print('\n--- Running wavetracker.wavetracker ---')
         print(f'{"Hardware used":^25}: {"GPU" if (~args.cpu and available_GPU) else "CPU"}')
     if args.verbose != 2: tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 

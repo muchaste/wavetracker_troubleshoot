@@ -1,7 +1,5 @@
 import matplotlib.gridspec as gridspec
-from matplotlib.patches import ConnectionPatch
 from plottools.colors import *
-from plottools.tag import tag
 colors_params(colors_muted, colors_tableau)
 import os
 import sys
@@ -10,7 +8,6 @@ from IPython import embed
 from tqdm import tqdm
 from PyQt5.QtCore import *
 
-from thunderfish.powerspectrum import decibel
 
 class Emit_progress():
     progress = pyqtSignal(float)

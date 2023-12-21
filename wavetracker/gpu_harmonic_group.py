@@ -1,16 +1,11 @@
 import math
-import sys
 import time
-import multiprocessing
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 from IPython import embed
 import numpy as np
-import cupy as cp
-from numba import cuda, jit, float64, int64, types
+from numba import cuda, float64, int64
 from .config import Configuration
 
-import random
 # try:
 #     from numba import cuda, jit
 #     imported_cuda=True
@@ -26,9 +21,6 @@ import random
 
 # min_group_size_glob = 2
 
-from thunderfish.powerspectrum import decibel
-from thunderfish.eventdetection import detect_peaks
-from thunderfish.eventdetection import detect_peaks_fixed as dpf
 
 # def define_globals():
 #     cfg = Configuration()
@@ -358,12 +350,11 @@ def harmonic_group_pipeline(spec_arr, spec_freq_arr, cfg, verbose = 0):
     spec = cuda.pinned_array((spec_arr.shape[1], spec_arr.shape[0]), dtype=np.float32)
     spec[:, :] = spec_arr.transpose()[:,:]
     log_spec = cuda.pinned_array_like(spec)
-    log_spec = np.zeros_like(log_spec)
+    log_spec = np.zeros_like(log_spec) # TODO: This is now a numpy array again, not a pinned array
 
     # GPU arrays
     g_spec = cuda.to_device(spec)
     g_log_spec = cuda.device_array_like(g_spec)
-
 
     # kernel setup & execution
     blockdim = (32, 32)
@@ -433,9 +424,9 @@ def harmonic_group_pipeline(spec_arr, spec_freq_arr, cfg, verbose = 0):
     if verbose >= 4: t0 = time.time()
     # CPU arrays (pinned)
     peaks = cuda.pinned_array_like(log_spec)
-    peaks = np.zeros_like(peaks)
+    peaks = np.zeros_like(peaks) # TODO: This might be a numpy array again, not a pinned array, maybe delete this line
     troughs = cuda.pinned_array_like(log_spec)
-    troughs = np.zeros_like(troughs)
+    troughs = np.zeros_like(troughs) # TODO: Same
 
     spec_freq = cuda.pinned_array_like(spec_freq_arr)
     spec_freq[:] = spec_freq_arr[:]

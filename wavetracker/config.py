@@ -1,9 +1,6 @@
 import sys
-import errno
 import ruamel.yaml
-import glob
 import os
-from IPython import embed
 
 
 class Configuration(object):

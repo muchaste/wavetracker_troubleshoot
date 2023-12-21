@@ -1,24 +1,16 @@
-import queue
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from thunderfish.dataloader import DataLoader as open_data
-from IPython import embed
 from .config import Configuration
 # from .spectrogram import *
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from PyQt5 import QtCore
 from PyQt5.QtCore import *
-import pyqtgraph as pg
-import time
-import queue
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 try:
     import tensorflow as tf
@@ -33,6 +25,8 @@ except ImportError:
 def multi_channel_audio_file_generator(filename: str,
                                        channels: int,
                                        data_snippet_idxs: int):
+    # TODO: Make this work with overlapping snippets (last and first FFT do not
+    # overlap)
     with tf.io.gfile.GFile(filename, 'rb') as f:
         while True:
             chunk = f.read(data_snippet_idxs * channels * 4) # 4 bytes per float32 value
@@ -77,7 +71,7 @@ def open_raw_data(filename: str,
 
 
 def main(args):
-    if args.verbose >= 1: print(f'\n--- Running wavetracker.datahandler ---')
+    if args.verbose >= 1: print('\n--- Running wavetracker.datahandler ---')
 
     cfg = Configuration(args.config, verbose=args.verbose)
 
