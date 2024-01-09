@@ -61,6 +61,7 @@ def get_valid_ids_by_freq_dist(times, idx_v, ident_v, fund_v, valid_v, old_valid
             continue
 
         valid = False
+        # TODO: This fails when no data in array
         if np.min(np.abs(valid_f - f[:, np.newaxis])) <= (convolve_f[1] - convolve_f[0]) / 2:
             valid = True
         elif id in old_valid_ids:
@@ -80,7 +81,8 @@ def get_valid_ids_by_freq_dist(times, idx_v, ident_v, fund_v, valid_v, old_valid
             # if valid:
             #     ax[0].text(t[0], f[0], f'{id:.0f}', ha='center', va='bottom')
     if illustrate_cleanup:
-        plt.show()
+        # plt.show()
+        plt.close()
     else:
         plt.close()
     return kde_th, np.array(valid_ids)
@@ -510,6 +512,8 @@ def main(folder = None):
             folder = "/home/raab/data/cleanup_test/2023-03-02-09_54"
         elif os.path.exists("/home/raab/data/2023-03-02-09_54"):
             folder = "/home/raab/data/2023-03-02-09_54"
+        elif os.path.exists("/home/weygoldt/Projects/wavetracker/tmp/2023-03-02-09_54"):
+            folder = "/home/weygoldt/Projects/wavetracker/tmp/2023-03-02-09_54"
         else:
             print('no file found.')
             exit()

@@ -3,3 +3,4 @@ wavetracker.egg-info/*
 *.pdf
 *.txt
 __pycache__
+tmp/*
