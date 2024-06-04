@@ -13,7 +13,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-thunderfish = {git = "https://github.com/janscience/thunderfish"}
+thunderfish = {git = "https://github.com/janscience/thunderfish.git"}
 numpy = "^1.26.4"
 numba = "^0.59.1"
 cupy-cuda12x = "^13.1.0"

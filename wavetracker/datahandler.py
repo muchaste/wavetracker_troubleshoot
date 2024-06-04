@@ -10,7 +10,7 @@ from PyQt5.QtGui import *
 
 # from .spectrogram import *
 from PyQt5.QtWidgets import *
-from thunderfish.dataloader import DataLoader as open_data
+from thunderlab.dataloader import DataLoader
 
 from .config import Configuration
 
@@ -111,7 +111,7 @@ def open_raw_data(
     folder = os.path.split(filename)[0]
     # filename = os.path.join(folder, 'traces-grid1.raw')
     print(filename)
-    data = open_data(
+    data = DataLoader(
         filename, buffersize=buffersize, backsize=backsize, channel=channel
     )
     samplerate = data.samplerate

@@ -2102,7 +2102,7 @@ thunderlab = "*"
 
 [package.source]
 type = "git"
-url = "https://github.com/janscience/thunderfish"
+url = "https://github.com/janscience/thunderfish.git"
 reference = "HEAD"
 resolved_reference = "ec413611dea259cc488d89f6738aa55a6eeecbb0"
 
@@ -2312,4 +2312,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "41f6e3e71f8d349f90a4b91ab11a665d3121b0ec9cdf12bf2808780f480fcea9"
+content-hash = "eb7affe0829d02582c600d795b6c95b15283439967b0f231bbb1bb9047753f33"
