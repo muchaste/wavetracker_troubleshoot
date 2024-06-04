@@ -1,19 +1,22 @@
-import sys
-import ruamel.yaml
 import os
+import sys
+
+import ruamel.yaml
 
 
-class Configuration(object):
+class Configuration:
     """
     Configuration class providing meta-parameters for the different processing steps in the wavetracker pipeline.
     The Object attributes refelct the differen analysis stages, e.g. "spectrogram", "harmonix_groups", and "tracking".
     """
 
-    def __init__(self, folder: str = None,
-                 file: str = None,
-                 verbose: int = 0,
-                 logger = None
-                 ) -> None:
+    def __init__(
+        self,
+        folder: str = None,
+        file: str = None,
+        verbose: int = 0,
+        logger=None,
+    ) -> None:
         """
         Constructs all necessary parameters and attributes to generate/provide a configuration file for the
         wavetracker-package.
@@ -41,8 +44,12 @@ class Configuration(object):
         self.harmonic_groups = {}
         self.tracking = {}
 
-        if self.verbose >= 1: print(f'{"Config file from":^25}: {os.path.realpath(self.file)}.')
-        if logger: logger.info(f'{"Config file from":^25}: {os.path.realpath(self.file)}.')
+        if self.verbose >= 1:
+            print(f'{"Config file from":^25}: {os.path.realpath(self.file)}.')
+        if logger:
+            logger.info(
+                f'{"Config file from":^25}: {os.path.realpath(self.file)}.'
+            )
 
         self.yaml = ruamel.yaml.YAML()
         with open(self.file) as f:
@@ -56,7 +63,15 @@ class Configuration(object):
         rep_list = []
         for dict in self.dicts:
             rep_list.append(f"{dict}:")
-            rep_list.extend(list(f"  {k: <16}:  {v}" for k, v in zip(getattr(self, dict).keys(), getattr(self, dict).values())))
+            rep_list.extend(
+                list(
+                    f"  {k: <16}:  {v}"
+                    for k, v in zip(
+                        getattr(self, dict).keys(),
+                        getattr(self, dict).values(),
+                    )
+                )
+            )
         return "\n".join(rep_list)
 
     def find_config(self, folder) -> None:
@@ -72,16 +87,25 @@ class Configuration(object):
         """
         folder = os.path.realpath(folder)
         folder = os.path.normpath(folder)
-        search_folders = [folder, os.sep.join(folder.split(os.sep)[:-1]), os.path.dirname(os.path.abspath(__file__))]
+        search_folders = [
+            folder,
+            os.sep.join(folder.split(os.sep)[:-1]),
+            os.path.dirname(os.path.abspath(__file__)),
+        ]
 
         found = False
         for search_folder in search_folders:
-            for dirpath, dirnames, filenames in os.walk(search_folder, topdown=True):
+            for dirpath, dirnames, filenames in os.walk(
+                search_folder, topdown=True
+            ):
                 for filename in [f for f in filenames if f.endswith(".yaml")]:
                     self.file = os.path.join(dirpath, filename)
-                    found = True; break
-                if found: break
-            if found: break
+                    found = True
+                    break
+                if found:
+                    break
+            if found:
+                break
         if not found:
             self.file = create_standard_cfg_file()
 
@@ -98,12 +122,12 @@ class Configuration(object):
         """
         for dict in self.cfg:
             self.cfg[dict] = getattr(self, dict)
-        with open(self.file, 'w') as f:
+        with open(self.file, "w") as f:
             self.yaml.dump(self.cfg, f)
             f.close()
 
 
-def create_standard_cfg_file(folder= '.'):
+def create_standard_cfg_file(folder="."):
     """
     Create a standard configuration file, when none could be found to be loaded.
 
@@ -132,7 +156,7 @@ def create_standard_cfg_file(folder= '.'):
     yaml = ruamel.yaml.YAML()  # defaults to round-trip if no parameters given
     code = yaml.load(yaml_str)
 
-    file = os.path.join(folder, 'cfg.yaml')
+    file = os.path.join(folder, "cfg.yaml")
     yaml.dump(code, file)
     return file
 
@@ -141,10 +165,10 @@ def main():
     if len(sys.argv) > 1:
         folder = sys.argv[1]
     else:
-        folder = '.'
+        folder = "."
     c = Configuration(folder)
     exit(c.save())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

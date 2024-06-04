@@ -1,20 +1,22 @@
-import sys
-import os
 import datetime
-import numpy as np
+import os
+import sys
+
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvasQTAgg as FigureCanvas,
+)
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+
 # from .version import __version__
 # from .powerspectrum import decibel, next_power_of_two, spectrogram
 # from .dataloader import open_data, fishgrid_grids, fishgrid_spacings
 # from .harmonics import harmonic_groups, fundamental_freqs
 # from .eventdetection import hist_threshold
-
-
-
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
 
 def decibel(power, ref_power=1.0, min_power=1e-20):
     """
@@ -47,21 +49,25 @@ def decibel(power, ref_power=1.0, min_power=1e-20):
         decibel_psd = np.array([power])
     if ref_power is None:
         ref_power = np.max(decibel_psd)
-    decibel_psd[tmp_power <= min_power] = float('-inf')
-    decibel_psd[tmp_power > min_power] = 10.0 * np.log10(decibel_psd[tmp_power > min_power]/ref_power)
+    decibel_psd[tmp_power <= min_power] = float("-inf")
+    decibel_psd[tmp_power > min_power] = 10.0 * np.log10(
+        decibel_psd[tmp_power > min_power] / ref_power
+    )
     if isinstance(power, (list, tuple, np.ndarray)):
         return decibel_psd
     else:
         return decibel_psd[0]
 
-class color:
-# to make error messages stand out
-   GREEN = '\033[92m'
-   RED = '\033[91m'
-   BOLD = '\033[1m'
-   END = '\033[0m'
 
-class PlotWidget():
+class color:
+    # to make error messages stand out
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    BOLD = "\033[1m"
+    END = "\033[0m"
+
+
+class PlotWidget:
     def __init__(self):
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
@@ -94,8 +100,18 @@ class PlotWidget():
         self.fill_spec_shape = None
         self.fill_spec = None
 
-    def plot_traces(self, ident_v, times, idx_v, fund_v, task = 'init', active_id = None, active_id2 = None, active_ids = None):
-        if task == 'init':
+    def plot_traces(
+        self,
+        ident_v,
+        times,
+        idx_v,
+        fund_v,
+        task="init",
+        active_id=None,
+        active_id2=None,
+        active_ids=None,
+    ):
+        if task == "init":
             for handle in self.trace_handles:
                 handle[0].remove()
             self.trace_handles = []
@@ -104,7 +120,12 @@ class PlotWidget():
 
             for i, ident in enumerate(np.array(possible_identities)):
                 c = np.random.rand(3)
-                h, = self.ax.plot(times[idx_v[ident_v == ident]], fund_v[ident_v == ident], marker='.', color=c)
+                (h,) = self.ax.plot(
+                    times[idx_v[ident_v == ident]],
+                    fund_v[ident_v == ident],
+                    marker=".",
+                    color=c,
+                )
                 self.trace_handles.append((h, ident))
 
             self.xlim = self.ax.get_xlim()
@@ -112,55 +133,102 @@ class PlotWidget():
             self.init_xlim = self.xlim
             self.init_ylim = self.ylim
 
-        elif task == 'post_new_assign':
+        elif task == "post_new_assign":
             c = np.random.rand(3)
-            h, = self.ax.plot(times[idx_v[ident_v == active_id]], fund_v[ident_v == active_id], marker='.', color=c)
+            (h,) = self.ax.plot(
+                times[idx_v[ident_v == active_id]],
+                fund_v[ident_v == active_id],
+                marker=".",
+                color=c,
+            )
             self.trace_handles.append((h, active_id))
 
-        elif task == 'post cut':
+        elif task == "post cut":
             handle_idents = np.array([x[1] for x in self.trace_handles])
-            refresh_handle = np.array(self.trace_handles)[handle_idents == active_id][0]
+            refresh_handle = np.array(self.trace_handles)[
+                handle_idents == active_id
+            ][0]
             refresh_handle[0].remove()
 
             c = np.random.rand(3)
-            h, = self.ax.plot(times[idx_v[ident_v == active_id]], fund_v[ident_v == active_id], marker='.', color=c)
-            self.trace_handles[np.arange(len(self.trace_handles))[handle_idents == active_id][0]] = (h, active_id)
+            (h,) = self.ax.plot(
+                times[idx_v[ident_v == active_id]],
+                fund_v[ident_v == active_id],
+                marker=".",
+                color=c,
+            )
+            self.trace_handles[
+                np.arange(len(self.trace_handles))[handle_idents == active_id][
+                    0
+                ]
+            ] = (h, active_id)
 
             new_ident = np.max(ident_v[~np.isnan(ident_v)])
             c = np.random.rand(3)
-            h, = self.ax.plot(times[idx_v[ident_v == new_ident]], fund_v[ident_v == new_ident], marker='.', color=c)
+            (h,) = self.ax.plot(
+                times[idx_v[ident_v == new_ident]],
+                fund_v[ident_v == new_ident],
+                marker=".",
+                color=c,
+            )
             self.trace_handles.append((h, new_ident))
 
-        elif task == 'post_connect':
+        elif task == "post_connect":
             handle_idents = np.array([x[1] for x in self.trace_handles])
 
-            remove_handle = np.array(self.trace_handles)[handle_idents == active_id2][0]
+            remove_handle = np.array(self.trace_handles)[
+                handle_idents == active_id2
+            ][0]
             remove_handle[0].remove()
 
-            joined_handle = np.array(self.trace_handles)[handle_idents == active_id][0]
+            joined_handle = np.array(self.trace_handles)[
+                handle_idents == active_id
+            ][0]
             joined_handle[0].remove()
 
             c = np.random.rand(3)
             # sorter = np.argsort(self.times[self.idx_v[self.ident_v == self.active_ident0]])
-            h, = self.ax.plot(times[idx_v[ident_v == active_id]], fund_v[ident_v == active_id], marker='.', color=c)
-            self.trace_handles[np.arange(len(self.trace_handles))[handle_idents == active_id][0]] = (h, active_id)
+            (h,) = self.ax.plot(
+                times[idx_v[ident_v == active_id]],
+                fund_v[ident_v == active_id],
+                marker=".",
+                color=c,
+            )
+            self.trace_handles[
+                np.arange(len(self.trace_handles))[handle_idents == active_id][
+                    0
+                ]
+            ] = (h, active_id)
             # self.trace_handles.append((h, self.active_ident0))
 
-            self.trace_handles.pop(np.arange(len(self.trace_handles))[handle_idents == active_id2][0])
+            self.trace_handles.pop(
+                np.arange(len(self.trace_handles))[
+                    handle_idents == active_id2
+                ][0]
+            )
 
-        elif task == 'post_delete':
+        elif task == "post_delete":
             handle_idents = np.array([x[1] for x in self.trace_handles])
-            delete_handle_idx = np.arange(len(self.trace_handles))[handle_idents == active_id][0]
-            delete_handle = np.array(self.trace_handles)[handle_idents == active_id][0]
+            delete_handle_idx = np.arange(len(self.trace_handles))[
+                handle_idents == active_id
+            ][0]
+            delete_handle = np.array(self.trace_handles)[
+                handle_idents == active_id
+            ][0]
             delete_handle[0].remove()
             self.trace_handles.pop(delete_handle_idx)
 
-
-        elif task == 'post_group_connect' or task == 'post_group_delete' or task == 'post_re_assign':
+        elif (
+            task == "post_group_connect"
+            or task == "post_group_delete"
+            or task == "post_re_assign"
+        ):
             handle_idents = np.array([x[1] for x in self.trace_handles])
             effected_idents = active_ids
 
-            mask = np.array([x in effected_idents for x in handle_idents], dtype=bool)
+            mask = np.array(
+                [x in effected_idents for x in handle_idents], dtype=bool
+            )
             delete_handle_idx = np.arange(len(self.trace_handles))[mask]
             delete_handle = np.array(self.trace_handles)[mask]
 
@@ -169,7 +237,12 @@ class PlotWidget():
                 dh[0].remove()
                 if len(ident_v[ident_v == dh[1]]) >= 1:
                     c = np.random.rand(3)
-                    h, = self.ax.plot(times[idx_v[ident_v == dh[1]]], fund_v[ident_v == dh[1]], marker='.', color=c)
+                    (h,) = self.ax.plot(
+                        times[idx_v[ident_v == dh[1]]],
+                        fund_v[ident_v == dh[1]],
+                        marker=".",
+                        color=c,
+                    )
                     self.trace_handles[dhi] = (h, dh[1])
                 else:
                     delete_afterwards.append(dhi)
@@ -177,9 +250,14 @@ class PlotWidget():
             for i in reversed(sorted(delete_afterwards)):
                 self.trace_handles.pop(i)
 
-            if task == 'post_re_assign':
+            if task == "post_re_assign":
                 c = np.random.rand(3)
-                h, = self.ax.plot(times[idx_v[ident_v == active_id]], fund_v[ident_v == active_id], marker='.', color=c)
+                (h,) = self.ax.plot(
+                    times[idx_v[ident_v == active_id]],
+                    fund_v[ident_v == active_id],
+                    marker=".",
+                    color=c,
+                )
                 self.trace_handles.append((h, active_id))
         else:
             pass
@@ -188,24 +266,48 @@ class PlotWidget():
         if self.active_group_handle:
             self.active_group_handle.remove()
 
-        self.active_group_handle, = self.ax.plot(times[idx_v[active_idx]], fund_v[active_idx], 'o', color='orange', markersize=4)
+        (self.active_group_handle,) = self.ax.plot(
+            times[idx_v[active_idx]],
+            fund_v[active_idx],
+            "o",
+            color="orange",
+            markersize=4,
+        )
 
     def highlight_id(self, active_id, ident_v, times, idx_v, fund_v, no):
-        if no == 'first':
-
+        if no == "first":
             if self.active_id_handle0:
                 self.active_id_handle0.remove()
 
-            self.active_id_handle0, = self.ax.plot(times[idx_v[ident_v == active_id]], fund_v[ident_v == active_id], color='orange', alpha=0.7, linewidth=4)
-        elif no == 'second':
+            (self.active_id_handle0,) = self.ax.plot(
+                times[idx_v[ident_v == active_id]],
+                fund_v[ident_v == active_id],
+                color="orange",
+                alpha=0.7,
+                linewidth=4,
+            )
+        elif no == "second":
             if self.active_id_handle1:
                 self.active_id_handle1.remove()
-            self.active_id_handle1, = self.ax.plot(times[idx_v[ident_v == active_id]], fund_v[ident_v == active_id], color='red', alpha=0.7, linewidth=4)
+            (self.active_id_handle1,) = self.ax.plot(
+                times[idx_v[ident_v == active_id]],
+                fund_v[ident_v == active_id],
+                color="red",
+                alpha=0.7,
+                linewidth=4,
+            )
 
     def highlight_cut(self, active_idx_in_trace, times, idx_v, fund_v):
         if self.active_cut_handle:
             self.active_cut_handle.remove()
-        self.active_cut_handle, = self.ax.plot(times[idx_v[active_idx_in_trace]], fund_v[active_idx_in_trace] , 'o', color='red', alpha = 0.7, markersize=5)
+        (self.active_cut_handle,) = self.ax.plot(
+            times[idx_v[active_idx_in_trace]],
+            fund_v[active_idx_in_trace],
+            "o",
+            color="red",
+            alpha=0.7,
+            markersize=5,
+        )
 
     def clock_time(self, rec_datetime, times):
         xlim = self.xlim
@@ -216,7 +318,7 @@ class PlotWidget():
             res = 1
         elif dx > 20 and dx <= 120:
             res = 10
-        elif dx > 120 and dx <=1200:
+        elif dx > 120 and dx <= 1200:
             res = 60
         elif dx > 1200 and dx <= 3600:
             res = 600  # 10 min
@@ -231,18 +333,37 @@ class PlotWidget():
                 label_idx0 = dmin * 60
 
         xtick = np.arange(label_idx0, times[-1], res)
-        datetime_xlabels = list(map(lambda x: rec_datetime + datetime.timedelta(seconds= x), xtick))
+        datetime_xlabels = list(
+            map(lambda x: rec_datetime + datetime.timedelta(seconds=x), xtick)
+        )
 
         if dx > 120:
-            xlabels = list(map(lambda x: ('%2s:%2s' % (str(x.hour), str(x.minute))).replace(' ', '0'), datetime_xlabels))
+            xlabels = list(
+                map(
+                    lambda x: (
+                        "%2s:%2s" % (str(x.hour), str(x.minute))
+                    ).replace(" ", "0"),
+                    datetime_xlabels,
+                )
+            )
             rotation = 0
         else:
-            xlabels = list(map(lambda x: ('%2s:%2s:%2s' % (str(x.hour), str(x.minute), str(x.second))).replace(' ', '0'), datetime_xlabels))
+            xlabels = list(
+                map(
+                    lambda x: (
+                        "%2s:%2s:%2s"
+                        % (str(x.hour), str(x.minute), str(x.second))
+                    ).replace(" ", "0"),
+                    datetime_xlabels,
+                )
+            )
             rotation = 45
         # ToDo: create mask
-        mask = np.arange(len(xtick))[(xtick > self.xlim[0]) & (xtick < self.xlim[1])]
+        mask = np.arange(len(xtick))[
+            (xtick > self.xlim[0]) & (xtick < self.xlim[1])
+        ]
         self.ax.set_xticks(xtick[mask])
-        self.ax.set_xticklabels(np.array(xlabels)[mask], rotation = rotation)
+        self.ax.set_xticklabels(np.array(xlabels)[mask], rotation=rotation)
         self.ax.set_xlim(*self.xlim)
         self.ax.set_ylim(*self.ylim)
         # embed()
@@ -260,8 +381,14 @@ class PlotWidget():
         xlim = self.xlim
         ylim = self.ylim
 
-        new_xlim = (xlim[0] + np.diff(xlim)[0] * 0.25, xlim[1] - np.diff(xlim)[0] * 0.25)
-        new_ylim = (ylim[0] + np.diff(ylim)[0] * 0.25, ylim[1] - np.diff(ylim)[0] * 0.25)
+        new_xlim = (
+            xlim[0] + np.diff(xlim)[0] * 0.25,
+            xlim[1] - np.diff(xlim)[0] * 0.25,
+        )
+        new_ylim = (
+            ylim[0] + np.diff(ylim)[0] * 0.25,
+            ylim[1] - np.diff(ylim)[0] * 0.25,
+        )
         self.ylim = new_ylim
         self.xlim = new_xlim
 
@@ -275,8 +402,14 @@ class PlotWidget():
         xlim = self.xlim
         ylim = self.ylim
 
-        new_xlim = (xlim[0] - np.diff(xlim)[0] * 0.25, xlim[1] + np.diff(xlim)[0] * 0.25)
-        new_ylim = (ylim[0] - np.diff(ylim)[0] * 0.25, ylim[1] + np.diff(ylim)[0] * 0.25)
+        new_xlim = (
+            xlim[0] - np.diff(xlim)[0] * 0.25,
+            xlim[1] + np.diff(xlim)[0] * 0.25,
+        )
+        new_ylim = (
+            ylim[0] - np.diff(ylim)[0] * 0.25,
+            ylim[1] + np.diff(ylim)[0] * 0.25,
+        )
         self.ylim = new_ylim
         self.xlim = new_xlim
 
@@ -301,7 +434,10 @@ class PlotWidget():
     def move_right(self):
         xlim = self.xlim
 
-        new_xlim = (xlim[0] + np.diff(xlim)[0] * 0.25, xlim[1] + np.diff(xlim)[0] * 0.25)
+        new_xlim = (
+            xlim[0] + np.diff(xlim)[0] * 0.25,
+            xlim[1] + np.diff(xlim)[0] * 0.25,
+        )
         self.xlim = new_xlim
 
         self.ax.set_xlim(*new_xlim)
@@ -311,7 +447,10 @@ class PlotWidget():
     def move_left(self):
         xlim = self.xlim
 
-        new_xlim = (xlim[0] - np.diff(xlim)[0] * 0.25, xlim[1] - np.diff(xlim)[0] * 0.25)
+        new_xlim = (
+            xlim[0] - np.diff(xlim)[0] * 0.25,
+            xlim[1] - np.diff(xlim)[0] * 0.25,
+        )
         self.xlim = new_xlim
 
         self.ax.set_xlim(*new_xlim)
@@ -321,7 +460,10 @@ class PlotWidget():
     def move_up(self):
         ylim = self.ylim
 
-        new_ylim = (ylim[0] + np.diff(ylim)[0] * 0.25, ylim[1] + np.diff(ylim)[0] * 0.25)
+        new_ylim = (
+            ylim[0] + np.diff(ylim)[0] * 0.25,
+            ylim[1] + np.diff(ylim)[0] * 0.25,
+        )
         self.ylim = new_ylim
 
         self.ax.set_ylim(*new_ylim)
@@ -330,11 +472,15 @@ class PlotWidget():
     def move_down(self):
         ylim = self.ylim
 
-        new_ylim = (ylim[0] - np.diff(ylim)[0] * 0.25, ylim[1] - np.diff(ylim)[0] * 0.25)
+        new_ylim = (
+            ylim[0] - np.diff(ylim)[0] * 0.25,
+            ylim[1] - np.diff(ylim)[0] * 0.25,
+        )
         self.ylim = new_ylim
 
         self.ax.set_ylim(*new_ylim)
         self.figure.canvas.draw()
+
 
 class MainWindow(QMainWindow):
     def __init__(self, folder=None, parent=None):
@@ -342,14 +488,18 @@ class MainWindow(QMainWindow):
         self.folder = folder
         self.Plot = PlotWidget()
 
-        self.Plot.figure.canvas.mpl_connect('button_press_event', self.buttonpress)
-        self.Plot.figure.canvas.mpl_connect('button_release_event', self.buttonrelease)
+        self.Plot.figure.canvas.mpl_connect(
+            "button_press_event", self.buttonpress
+        )
+        self.Plot.figure.canvas.mpl_connect(
+            "button_release_event", self.buttonrelease
+        )
 
         self.initMe()
 
     def initMe(self):
         # implement status Bar
-        self.statusBar().showMessage('Welcome to FishLab')
+        self.statusBar().showMessage("Welcome to FishLab")
         # MenuBar
         self.init_Actions()
 
@@ -376,7 +526,7 @@ class MainWindow(QMainWindow):
         self.resize(int(1 * width), int(1 * height))
 
         # self.setGeometry(200, 50, 1200, 800)  # set window proportion
-        self.setWindowTitle('EOD sorter')  # set window title
+        self.setWindowTitle("EOD sorter")  # set window title
 
         # ToDo: create icon !!!
         # self.setWindowIcon(QIcon('<path>'))  # set window image (left top)
@@ -385,11 +535,11 @@ class MainWindow(QMainWindow):
 
         self.cb_channel = QComboBox()
         for i in np.arange(16):
-            self.cb_channel.addItem('Channel %.0f' % i)
+            self.cb_channel.addItem("Channel %.0f" % i)
         self.cb_channel.currentIndexChanged.connect(self.channel_change)
 
         self.cb_SCH_MCH = QComboBox()
-        self.cb_SCH_MCH.addItems(['single Ch.', 'multi Ch.'])
+        self.cb_SCH_MCH.addItems(["single Ch.", "multi Ch."])
 
         self.cb_channel.setEnabled(False)
         self.cb_SCH_MCH.setEnabled(False)
@@ -422,15 +572,15 @@ class MainWindow(QMainWindow):
         self.Plot.canvas.draw()
 
     def init_ToolBar(self):
-        toolbar = self.addToolBar('TB')  # toolbar needs QMainWindow ?!
+        toolbar = self.addToolBar("TB")  # toolbar needs QMainWindow ?!
         self.addToolBar(Qt.LeftToolBarArea, toolbar)
-        toolbar2 = self.addToolBar('TB2')  # toolbar needs QMainWindow ?!
+        toolbar2 = self.addToolBar("TB2")  # toolbar needs QMainWindow ?!
         self.addToolBar(Qt.LeftToolBarArea, toolbar2)
 
-        toolbar3 = self.addToolBar('TB3')  # toolbar needs QMainWindow ?!
+        toolbar3 = self.addToolBar("TB3")  # toolbar needs QMainWindow ?!
         self.addToolBar(Qt.LeftToolBarArea, toolbar3)
 
-        toolbar4 = self.addToolBar('TB4')  # toolbar needs QMainWindow ?!
+        toolbar4 = self.addToolBar("TB4")  # toolbar needs QMainWindow ?!
         self.addToolBar(Qt.LeftToolBarArea, toolbar4)
 
         toolbar.addAction(self.Act_interactive_sel)
@@ -454,39 +604,45 @@ class MainWindow(QMainWindow):
         toolbar4.addAction(self.Act_norm_spec)
 
     def init_MenuBar(self):
-        menubar = self.menuBar() # needs QMainWindow ?!
-        file = menubar.addMenu('&File') # create file menu ... accessable with alt+F
+        menubar = self.menuBar()  # needs QMainWindow ?!
+        file = menubar.addMenu(
+            "&File"
+        )  # create file menu ... accessable with alt+F
         file.addActions([self.Act_open, self.Act_save, self.Act_exit])
 
-        edit = menubar.addMenu('&Edit')
+        edit = menubar.addMenu("&Edit")
         edit.addActions([self.Act_undo, self.Act_unassigned_funds])
 
     def init_Actions(self):
         #################### Menu ####################
         # --- MenuBar - File --- #
-        self.Act_open = QAction('&Open', self)
-        self.Act_open.setStatusTip('Open file')
+        self.Act_open = QAction("&Open", self)
+        self.Act_open.setStatusTip("Open file")
         self.Act_open.triggered.connect(self.open)
 
-        self.Act_save = QAction('&Save', self)
+        self.Act_save = QAction("&Save", self)
         self.Act_save.setEnabled(False)
-        self.Act_save.setStatusTip('Save traces')
+        self.Act_save.setStatusTip("Save traces")
         self.Act_save.triggered.connect(self.save)
 
         # exitMe = QAction(QIcon('<path>'), '&Exit', self)
-        self.Act_exit = QAction('&Exit', self)  # trigger with alt+E
-        self.Act_exit.setShortcut('ctrl+Q')
-        self.Act_exit.setStatusTip('Terminate programm')
+        self.Act_exit = QAction("&Exit", self)  # trigger with alt+E
+        self.Act_exit.setShortcut("ctrl+Q")
+        self.Act_exit.setStatusTip("Terminate programm")
         self.Act_exit.triggered.connect(self.close)
 
         # --- MenuBar - Edit --- #
         package_dir = os.path.dirname(os.path.abspath(__file__))
 
-        self.Act_undo = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'undo.png')), '&Undo', self)
-        self.Act_undo.setStatusTip('Undo last sorting step')
+        self.Act_undo = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "undo.png")),
+            "&Undo",
+            self,
+        )
+        self.Act_undo.setStatusTip("Undo last sorting step")
         self.Act_undo.triggered.connect(self.undo)
 
-        self.Act_unassigned_funds = QAction('Unassigned Freqs', self)
+        self.Act_unassigned_funds = QAction("Unassigned Freqs", self)
         self.Act_unassigned_funds.setCheckable(True)
         self.Act_unassigned_funds.setChecked(False)
         self.Act_unassigned_funds.triggered.connect(self.show_unassigned_funds)
@@ -494,92 +650,166 @@ class MainWindow(QMainWindow):
         ################## ToolBar ###################
 
         # self.Act_interactive_sel = QAction(QIcon('./gui_sym/sel.png'), 'Create new frequencies', self)
-        self.Act_interactive_sel = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'sel.png')), 'Create new frequencies', self)
-        self.Act_interactive_sel.setStatusTip('create new freqs from fine spectrogram')
+        self.Act_interactive_sel = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "sel.png")),
+            "Create new frequencies",
+            self,
+        )
+        self.Act_interactive_sel.setStatusTip(
+            "create new freqs from fine spectrogram"
+        )
         self.Act_interactive_sel.setCheckable(True)
         self.Act_interactive_sel.setEnabled(False)
 
         # self.Act_interactive_con = QAction(QIcon('./gui_sym/con.png'), 'Connect', self)
-        self.Act_interactive_con = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'con.png')), 'Connect', self)
-        self.Act_interactive_con.setStatusTip(r'connect two selected traces')
+        self.Act_interactive_con = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "con.png")),
+            "Connect",
+            self,
+        )
+        self.Act_interactive_con.setStatusTip(r"connect two selected traces")
         self.Act_interactive_con.setCheckable(True)
         self.Act_interactive_con.setEnabled(False)
 
         # self.Act_interactive_GrCon = QAction(QIcon('./gui_sym/GrCon.png'), 'Group Connect', self)
-        self.Act_interactive_GrCon = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'GrCon.png')), 'Group Connect', self)
+        self.Act_interactive_GrCon = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "GrCon.png")),
+            "Group Connect",
+            self,
+        )
         self.Act_interactive_GrCon.setCheckable(True)
         self.Act_interactive_GrCon.setEnabled(False)
 
         # self.Act_interactive_newassign = QAction(QIcon('./gui_sym/newassign.png'), 'Re-assign', self)
-        self.Act_interactive_newassign = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'newassign.png')), 'Re-assign', self)
+        self.Act_interactive_newassign = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "newassign.png")),
+            "Re-assign",
+            self,
+        )
         self.Act_interactive_newassign.setCheckable(True)
         self.Act_interactive_newassign.setEnabled(False)
 
         # self.Act_interactive_del = QAction(QIcon('./gui_sym/del.png'), 'Delete Trace', self)
-        self.Act_interactive_del = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'del.png')), 'Delete Trace', self)
+        self.Act_interactive_del = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "del.png")),
+            "Delete Trace",
+            self,
+        )
         self.Act_interactive_del.setCheckable(True)
         self.Act_interactive_del.setEnabled(False)
 
         # self.Act_interactive_GrDel = QAction(QIcon('./gui_sym/GrDel.png'), 'Group Delete', self)
-        self.Act_interactive_GrDel = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'GrDel.png')), 'Group Delete', self)
+        self.Act_interactive_GrDel = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "GrDel.png")),
+            "Group Delete",
+            self,
+        )
         self.Act_interactive_GrDel.setCheckable(True)
         self.Act_interactive_GrDel.setEnabled(False)
 
         # self.Act_interactive_reset = QAction(QIcon('./gui_sym/reset.png'), 'Reset Variables', self)
-        self.Act_interactive_reset = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'reset.png')), 'Reset Variables', self)
+        self.Act_interactive_reset = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "reset.png")),
+            "Reset Variables",
+            self,
+        )
         self.Act_interactive_reset.setEnabled(False)
         self.Act_interactive_reset.triggered.connect(self.reset_variables)
 
         # self.Act_interactive_cut = QAction(QIcon('./gui_sym/cut.png'), 'Cut trace', self)
-        self.Act_interactive_cut = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'cut.png')), 'Cut trace', self)
+        self.Act_interactive_cut = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "cut.png")),
+            "Cut trace",
+            self,
+        )
         self.Act_interactive_cut.setCheckable(True)
         self.Act_interactive_cut.setEnabled(False)
 
         # self.Act_interactive_AutoSort = QAction(QIcon('./gui_sym/auto.png'), 'Auto Connect', self)
-        self.Act_interactive_AutoSort = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'auto.png')), 'Auto Connect', self)
+        self.Act_interactive_AutoSort = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "auto.png")),
+            "Auto Connect",
+            self,
+        )
         self.Act_interactive_AutoSort.setEnabled(False)
         # self.Act_interactive_ManualSort = QAction(QIcon('./gui_sym/manuel.png'), 'Manual Connect', self)
-        self.Act_interactive_ManualSort = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'manuel.png')), 'Manual Connect', self)
+        self.Act_interactive_ManualSort = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "manuel.png")),
+            "Manual Connect",
+            self,
+        )
         self.Act_interactive_ManualSort.setEnabled(False)
 
         # self.Act_interactive_zoom_out = QAction(QIcon('./gui_sym/zoomout.png'), 'Zoom -', self)
-        self.Act_interactive_zoom_out = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'zoomout.png')), 'Zoom -', self)
+        self.Act_interactive_zoom_out = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "zoomout.png")),
+            "Zoom -",
+            self,
+        )
         self.Act_interactive_zoom_out.triggered.connect(self.Mzoom_out)
         self.Act_interactive_zoom_out.setEnabled(False)
 
         # self.Act_interactive_zoom_in = QAction(QIcon('./gui_sym/zoomin.png'), 'zoom +', self)
-        self.Act_interactive_zoom_in = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'zoomin.png')), 'zoom +', self)
+        self.Act_interactive_zoom_in = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "zoomin.png")),
+            "zoom +",
+            self,
+        )
         self.Act_interactive_zoom_in.triggered.connect(self.Mzoom_in)
         self.Act_interactive_zoom_in.setEnabled(False)
 
         # self.Act_interactive_zoom_home = QAction(QIcon('./gui_sym/zoom_home.png'), 'zoom Home', self)
-        self.Act_interactive_zoom_home = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'zoom_home.png')), 'zoom Home', self)
+        self.Act_interactive_zoom_home = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "zoom_home.png")),
+            "zoom Home",
+            self,
+        )
         self.Act_interactive_zoom_home.triggered.connect(self.Mzoom_home)
         self.Act_interactive_zoom_home.setEnabled(False)
 
         # self.Act_save_plt = QAction(QIcon('./gui_sym/saveplot.png'), 'save current plot', self)
-        self.Act_save_plt = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'saveplot.png')), 'save current plot', self)
+        self.Act_save_plt = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "saveplot.png")),
+            "save current plot",
+            self,
+        )
         self.Act_save_plt.triggered.connect(self.Msave_plt)
         self.Act_save_plt.setEnabled(False)
 
         # self.Act_interactive_zoom = QAction(QIcon('./gui_sym/zoom.png'), 'Zoom select', self)
-        self.Act_interactive_zoom = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'zoom.png')), 'Zoom select', self)
+        self.Act_interactive_zoom = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "zoom.png")),
+            "Zoom select",
+            self,
+        )
         self.Act_interactive_zoom.setCheckable(True)
         self.Act_interactive_zoom.setEnabled(False)
-        self.Act_interactive_zoom.setShortcut('O')
+        self.Act_interactive_zoom.setShortcut("O")
         # self.Act_interactive_zoom.toggled.connect(self.Mzoom)
 
         # self.Act_fine_spec = QAction(QIcon('./gui_sym/spec_fine.png'), 'Show fine Spectrogram', self)
-        self.Act_fine_spec = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'spec_fine.png')), 'Show fine Spectrogram', self)
+        self.Act_fine_spec = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "spec_fine.png")),
+            "Show fine Spectrogram",
+            self,
+        )
         self.Act_fine_spec.setEnabled(False)
         self.Act_fine_spec.triggered.connect(self.Mfine_spec)
         # self.Act_norm_spec = QAction(QIcon('./gui_sym/spec_roght.png'), 'Show rough Spectrogram', self)
-        self.Act_norm_spec = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'spec_roght.png')), 'Show rough Spectrogram', self)
+        self.Act_norm_spec = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "spec_roght.png")),
+            "Show rough Spectrogram",
+            self,
+        )
         self.Act_norm_spec.setEnabled(False)
         self.Act_norm_spec.triggered.connect(self.Mnorm_spec)
 
         # self.Act_arrowkeys = QAction(QIcon('./gui_sym/arrowkeys.png'), 'Activate arrorw keys', self)
-        self.Act_arrowkeys = QAction(QIcon(os.path.join(package_dir, 'gui_sym', 'arrowkeys.png')), 'Activate arrorw keys', self)
+        self.Act_arrowkeys = QAction(
+            QIcon(os.path.join(package_dir, "gui_sym", "arrowkeys.png")),
+            "Activate arrorw keys",
+            self,
+        )
         self.Act_arrowkeys.setCheckable(True)
         self.Act_arrowkeys.setEnabled(False)
 
@@ -597,25 +827,35 @@ class MainWindow(QMainWindow):
         xlim = np.sort([self.x0, self.x1])
         ylim = np.sort([self.y0, self.y1])
 
-        if not hasattr(self.active_idx, '__len__'):
-            self.active_idx = np.arange(len(self.fund_v))[(self.fund_v >= np.min(ylim[0])) & (self.fund_v < np.max(ylim[1])) &
-                                                          (self.times[self.idx_v] >= np.min(xlim[0])) & (self.times[self.idx_v] < np.max(xlim[1])) &
-                                                          (~np.isnan(self.ident_v))]
-        else:
-            if self.Act_interactive_con.isChecked():
-                self.active_idx2 = np.arange(len(self.fund_v))[
-                    (self.fund_v >= np.min(ylim[0])) & (self.fund_v < np.max(ylim[1])) &
-                    (self.times[self.idx_v] >= np.min(xlim[0])) & (self.times[self.idx_v] < np.max(xlim[1])) &
-                    (~np.isnan(self.ident_v))]
+        if not hasattr(self.active_idx, "__len__"):
+            self.active_idx = np.arange(len(self.fund_v))[
+                (self.fund_v >= np.min(ylim[0]))
+                & (self.fund_v < np.max(ylim[1]))
+                & (self.times[self.idx_v] >= np.min(xlim[0]))
+                & (self.times[self.idx_v] < np.max(xlim[1]))
+                & (~np.isnan(self.ident_v))
+            ]
+        elif self.Act_interactive_con.isChecked():
+            self.active_idx2 = np.arange(len(self.fund_v))[
+                (self.fund_v >= np.min(ylim[0]))
+                & (self.fund_v < np.max(ylim[1]))
+                & (self.times[self.idx_v] >= np.min(xlim[0]))
+                & (self.times[self.idx_v] < np.max(xlim[1]))
+                & (~np.isnan(self.ident_v))
+            ]
 
     def get_active_idx_rect_unassigned(self):
         xlim = np.sort([self.x0, self.x1])
         ylim = np.sort([self.y0, self.y1])
 
-        if not hasattr(self.active_idx, '__len__'):
-            self.active_idx = np.arange(len(self.fund_v))[(self.fund_v >= np.min(ylim[0])) & (self.fund_v < np.max(ylim[1])) &
-                                                          (self.times[self.idx_v] >= np.min(xlim[0])) & (self.times[self.idx_v] < np.max(xlim[1])) &
-                                                          (np.isnan(self.ident_v))]
+        if not hasattr(self.active_idx, "__len__"):
+            self.active_idx = np.arange(len(self.fund_v))[
+                (self.fund_v >= np.min(ylim[0]))
+                & (self.fund_v < np.max(ylim[1]))
+                & (self.times[self.idx_v] >= np.min(xlim[0]))
+                & (self.times[self.idx_v] < np.max(xlim[1]))
+                & (np.isnan(self.ident_v))
+            ]
 
     def get_active_id(self, idx):
         if not self.active_id:
@@ -628,29 +868,54 @@ class MainWindow(QMainWindow):
         self.active_ids = np.unique(self.ident_v[self.active_idx])
 
     def get_active_idx_in_trace(self):
-        self.active_idx_in_trace = np.arange(len(self.fund_v))[(self.ident_v == self.active_id) &
-                                                               (self.times[self.idx_v] < self.x1)][-1]
+        self.active_idx_in_trace = np.arange(len(self.fund_v))[
+            (self.ident_v == self.active_id)
+            & (self.times[self.idx_v] < self.x1)
+        ][-1]
 
     def cut(self):
         next_ident = np.max(self.ident_v[~np.isnan(self.ident_v)]) + 1
-        self.ident_v[(self.ident_v == self.active_id) & (self.idx_v <= self.idx_v[self.active_idx_in_trace])] = next_ident
+        self.ident_v[
+            (self.ident_v == self.active_id)
+            & (self.idx_v <= self.idx_v[self.active_idx_in_trace])
+        ] = next_ident
 
         self.Plot.active_idx_in_trace = None
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task='post cut', active_id = self.active_id)
+        self.Plot.plot_traces(
+            self.ident_v,
+            self.times,
+            self.idx_v,
+            self.fund_v,
+            task="post cut",
+            active_id=self.active_id,
+        )
 
         self.reset_variables()
 
         self.Plot.canvas.draw()
 
     def connect(self):
-        overlapping_idxs = np.intersect1d(self.idx_v[self.ident_v == self.active_id],
-                                          self.idx_v[self.ident_v == self.active_id2])
+        overlapping_idxs = np.intersect1d(
+            self.idx_v[self.ident_v == self.active_id],
+            self.idx_v[self.ident_v == self.active_id2],
+        )
 
         # self.ident_v[(self.idx_v == overlapping_idxs) & (self.ident_v == self.active_ident0)] = np.nan
-        self.ident_v[(np.in1d(self.idx_v, np.array(overlapping_idxs))) & (self.ident_v == self.active_id)] = np.nan
+        self.ident_v[
+            (np.in1d(self.idx_v, np.array(overlapping_idxs)))
+            & (self.ident_v == self.active_id)
+        ] = np.nan
         self.ident_v[self.ident_v == self.active_id2] = self.active_id
 
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task = 'post_connect', active_id = self.active_id, active_id2 = self.active_id2)
+        self.Plot.plot_traces(
+            self.ident_v,
+            self.times,
+            self.idx_v,
+            self.fund_v,
+            task="post_connect",
+            active_id=self.active_id,
+            active_id2=self.active_id2,
+        )
 
         self.reset_variables()
 
@@ -658,7 +923,14 @@ class MainWindow(QMainWindow):
 
     def delete(self):
         self.ident_v[self.ident_v == self.active_id] = np.nan
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task = 'post_delete', active_id = self.active_id)
+        self.Plot.plot_traces(
+            self.ident_v,
+            self.times,
+            self.idx_v,
+            self.fund_v,
+            task="post_delete",
+            active_id=self.active_id,
+        )
 
         self.reset_variables()
 
@@ -671,16 +943,28 @@ class MainWindow(QMainWindow):
             max_len_id[enu] = len(self.ident_v[self.ident_v == id])
         target_ident = self.active_ids[np.argmax(max_len_id)]
 
-
         for ai in self.active_ids:
             if ai == target_ident:
                 continue
 
-            overlapping_idxs = np.intersect1d(self.idx_v[self.ident_v == target_ident], self.idx_v[self.ident_v == ai])
-            self.ident_v[(np.in1d(self.idx_v, np.array(overlapping_idxs))) & (self.ident_v == ai)] = np.nan
+            overlapping_idxs = np.intersect1d(
+                self.idx_v[self.ident_v == target_ident],
+                self.idx_v[self.ident_v == ai],
+            )
+            self.ident_v[
+                (np.in1d(self.idx_v, np.array(overlapping_idxs)))
+                & (self.ident_v == ai)
+            ] = np.nan
             self.ident_v[self.ident_v == ai] = target_ident
 
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task = 'post_group_connect', active_ids=self.active_ids)
+        self.Plot.plot_traces(
+            self.ident_v,
+            self.times,
+            self.idx_v,
+            self.fund_v,
+            task="post_group_connect",
+            active_ids=self.active_ids,
+        )
 
         self.reset_variables()
         self.Plot.canvas.draw()
@@ -690,24 +974,47 @@ class MainWindow(QMainWindow):
             next_id = np.nanmax(self.ident_v) + 1
             self.ident_v[self.active_idx] = next_id
 
-            self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task = 'post_new_assign', active_id=next_id)
+            self.Plot.plot_traces(
+                self.ident_v,
+                self.times,
+                self.idx_v,
+                self.fund_v,
+                task="post_new_assign",
+                active_id=next_id,
+            )
 
         else:
             next_id = np.nanmax(self.ident_v) + 1
             self.get_active_group_ids()
             self.ident_v[self.active_idx] = next_id
 
-            self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task = 'post_re_assign', active_ids=self.active_ids, active_id=next_id)
+            self.Plot.plot_traces(
+                self.ident_v,
+                self.times,
+                self.idx_v,
+                self.fund_v,
+                task="post_re_assign",
+                active_ids=self.active_ids,
+                active_id=next_id,
+            )
 
         self.reset_variables()
         self.Plot.canvas.draw()
 
     def group_delete(self):
         self.ident_v[self.active_idx] = np.nan
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task = 'post_group_delete', active_ids=self.active_ids)
+        self.Plot.plot_traces(
+            self.ident_v,
+            self.times,
+            self.idx_v,
+            self.fund_v,
+            task="post_group_delete",
+            active_ids=self.active_ids,
+        )
 
         self.reset_variables()
         self.Plot.canvas.draw()
+
     # @QtCore.PYQT_SLOT
     def reset_variables(self):
         self.active_idx = None
@@ -736,17 +1043,19 @@ class MainWindow(QMainWindow):
 
     def show_unassigned_funds(self):
         if self.Act_unassigned_funds.isChecked():
-            print('checked')
+            print("checked")
             f = self.fund_v[np.isnan(self.ident_v)]
             t = self.times[self.idx_v[np.isnan(self.ident_v)]]
-            self.Plot.unassigned_funds_handle, = self.Plot.ax.plot(t, f, 'o', color='k')
+            (self.Plot.unassigned_funds_handle,) = self.Plot.ax.plot(
+                t, f, "o", color="k"
+            )
             self.Plot.figure.canvas.draw()
 
         else:
             self.Plot.unassigned_funds_handle.remove()
             self.Plot.unassigned_funds_handle = None
             self.Plot.figure.canvas.draw()
-            print('unchecked')
+            print("unchecked")
 
     def channel_change(self, i):
         if self.previousChannel != None:
@@ -763,15 +1072,29 @@ class MainWindow(QMainWindow):
 
         if self.Plot.spec_img_handle:
             self.Plot.spec_img_handle.remove()
-        self.Plot.spec_img_handle = self.Plot.ax.imshow(decibel(self.spectra)[::-1],
-                                              extent=[self.times[0], self.times[-1] + (self.times[1] - self.times[0]), 0, 2000],
-                                              aspect='auto',vmin = -100, vmax = -50, alpha=0.7, cmap='jet', interpolation='gaussian')
-        self.Plot.ax.set_xlabel('time', fontsize=12)
-        self.Plot.ax.set_ylabel('frequency [Hz]', fontsize=12)
+        self.Plot.spec_img_handle = self.Plot.ax.imshow(
+            decibel(self.spectra)[::-1],
+            extent=[
+                self.times[0],
+                self.times[-1] + (self.times[1] - self.times[0]),
+                0,
+                2000,
+            ],
+            aspect="auto",
+            vmin=-100,
+            vmax=-50,
+            alpha=0.7,
+            cmap="jet",
+            interpolation="gaussian",
+        )
+        self.Plot.ax.set_xlabel("time", fontsize=12)
+        self.Plot.ax.set_ylabel("frequency [Hz]", fontsize=12)
         # self.Plot.ax.set_xlim(self.start_time, self.end_time)
         # self.Plot.ax.set_ylim(400, 1000)
 
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task='init')
+        self.Plot.plot_traces(
+            self.ident_v, self.times, self.idx_v, self.fund_v, task="init"
+        )
 
         self.Plot.clock_time(self.rec_datetime, self.times)
 
@@ -779,48 +1102,64 @@ class MainWindow(QMainWindow):
 
     def save(self):
         if self.cb_SCH_MCH.currentIndex() == 0:
-            print('save single channels')
-            np.save(os.path.join(self.folder, 'all_ident_v.npy'), self.all_ident_v)
+            print("save single channels")
+            np.save(
+                os.path.join(self.folder, "all_ident_v.npy"), self.all_ident_v
+            )
         elif self.cb_SCH_MCH.currentIndex() == 1:
-            print('save multi channel')
-            np.save(os.path.join(self.folder, 'ident_v.npy'), self.ident_v)
-            np.save(os.path.join(self.folder, 'idx_v.npy'), self.idx_v)
-            np.save(os.path.join(self.folder, 'fund_v.npy'), self.fund_v)
-            np.save(os.path.join(self.folder, 'sign_v.npy'), self.sign_v)
+            print("save multi channel")
+            np.save(os.path.join(self.folder, "ident_v.npy"), self.ident_v)
+            np.save(os.path.join(self.folder, "idx_v.npy"), self.idx_v)
+            np.save(os.path.join(self.folder, "fund_v.npy"), self.fund_v)
+            np.save(os.path.join(self.folder, "sign_v.npy"), self.sign_v)
         else:
             pass
 
     def open(self):
         def get_datetime(folder):
-            rec_year, rec_month, rec_day, rec_time = \
-                os.path.split(os.path.split(folder)[-1])[-1].split('-')
+            rec_year, rec_month, rec_day, rec_time = os.path.split(
+                os.path.split(folder)[-1]
+            )[-1].split("-")
             rec_year = int(rec_year)
             rec_month = int(rec_month)
             rec_day = int(rec_day)
             try:
-                rec_time = [int(rec_time.split('_')[0]), int(rec_time.split('_')[1]), 0]
+                rec_time = [
+                    int(rec_time.split("_")[0]),
+                    int(rec_time.split("_")[1]),
+                    0,
+                ]
             except:
-                rec_time = [int(rec_time.split(':')[0]), int(rec_time.split(':')[1]), 0]
+                rec_time = [
+                    int(rec_time.split(":")[0]),
+                    int(rec_time.split(":")[1]),
+                    0,
+                ]
 
-            rec_datetime = datetime.datetime(year=rec_year, month=rec_month, day=rec_day, hour=rec_time[0],
-                                             minute=rec_time[1], second=rec_time[2])
-
+            rec_datetime = datetime.datetime(
+                year=rec_year,
+                month=rec_month,
+                day=rec_day,
+                hour=rec_time[0],
+                minute=rec_time[1],
+                second=rec_time[2],
+            )
 
             return rec_datetime
 
         if self.folder == None:
             fd = QFileDialog()
-            self.folder = fd.getExistingDirectory(self, 'Select Directory')
+            self.folder = fd.getExistingDirectory(self, "Select Directory")
             self.folder = os.path.abspath(self.folder)
         else:
             self.folder = os.path.abspath(self.folder)
             pass
         # embed()
         # quit()
-        self.setWindowTitle(f'EOD sorter with {os.path.basename(self.folder)}')
+        self.setWindowTitle(f"EOD sorter with {os.path.basename(self.folder)}")
 
         print(self.folder)
-        if self.folder != '':
+        if self.folder != "":
             # self.folder = os.path.split(self.filename)[0]
             self.rec_datetime = get_datetime(self.folder)
             self.Plot.rec_datetime = self.rec_datetime
@@ -832,14 +1171,26 @@ class MainWindow(QMainWindow):
         self.cb_channel.setEnabled(True)
         self.cb_SCH_MCH.setEnabled(True)
 
-        if os.path.exists(os.path.join(self.folder, 'all_fund_v.npy')):
-            self.all_fund_v = np.load(os.path.join(self.folder, 'all_fund_v.npy'))
-            self.all_sign_v = np.load(os.path.join(self.folder, 'all_sign_v.npy'))
-            self.all_idx_v = np.load(os.path.join(self.folder, 'all_idx_v.npy'))
-            self.all_ident_v = np.load(os.path.join(self.folder, 'all_ident_v.npy'))
-            self.times = np.load(os.path.join(self.folder, 'all_times.npy'))
-            self.all_spectra = np.load(os.path.join(self.folder, 'all_spec.npy'))
-            self.start_time, self.end_time = np.load(os.path.join(self.folder, 'meta.npy'))
+        if os.path.exists(os.path.join(self.folder, "all_fund_v.npy")):
+            self.all_fund_v = np.load(
+                os.path.join(self.folder, "all_fund_v.npy")
+            )
+            self.all_sign_v = np.load(
+                os.path.join(self.folder, "all_sign_v.npy")
+            )
+            self.all_idx_v = np.load(
+                os.path.join(self.folder, "all_idx_v.npy")
+            )
+            self.all_ident_v = np.load(
+                os.path.join(self.folder, "all_ident_v.npy")
+            )
+            self.times = np.load(os.path.join(self.folder, "all_times.npy"))
+            self.all_spectra = np.load(
+                os.path.join(self.folder, "all_spec.npy")
+            )
+            self.start_time, self.end_time = np.load(
+                os.path.join(self.folder, "meta.npy")
+            )
 
             self.fund_v = self.all_fund_v[0]
             self.sign_v = self.all_sign_v[0]
@@ -849,19 +1200,23 @@ class MainWindow(QMainWindow):
             self.cb_SCH_MCH.setCurrentIndex(0)
             self.got_single_channel = True
 
-        if os.path.exists(os.path.join(self.folder, 'fund_v.npy')):
-            self.fund_v = np.load(os.path.join(self.folder, 'fund_v.npy'))
-            self.sign_v = np.load(os.path.join(self.folder, 'sign_v.npy'))
-            self.idx_v = np.load(os.path.join(self.folder, 'idx_v.npy'))
-            self.ident_v = np.load(os.path.join(self.folder, 'ident_v.npy'))
-            self.times = np.load(os.path.join(self.folder, 'times.npy'))
+        if os.path.exists(os.path.join(self.folder, "fund_v.npy")):
+            self.fund_v = np.load(os.path.join(self.folder, "fund_v.npy"))
+            self.sign_v = np.load(os.path.join(self.folder, "sign_v.npy"))
+            self.idx_v = np.load(os.path.join(self.folder, "idx_v.npy"))
+            self.ident_v = np.load(os.path.join(self.folder, "ident_v.npy"))
+            self.times = np.load(os.path.join(self.folder, "times.npy"))
             try:
-                self.spectra = np.load(os.path.join(self.folder, 'spec.npy'))
+                self.spectra = np.load(os.path.join(self.folder, "spec.npy"))
             except:
-                self.spectra = np.load(os.path.join(self.folder, 'sparse_spectra.npy'))
+                self.spectra = np.load(
+                    os.path.join(self.folder, "sparse_spectra.npy")
+                )
 
             try:
-                self.start_time, self.end_time = np.load(os.path.join(self.folder, 'meta.npy'))
+                self.start_time, self.end_time = np.load(
+                    os.path.join(self.folder, "meta.npy")
+                )
             except:
                 self.start_time, self.end_time = self.times[0], self.times[-1]
             self.cb_SCH_MCH.setCurrentIndex(1)
@@ -869,33 +1224,77 @@ class MainWindow(QMainWindow):
             self.got_multi_channel = True
             self.rec_datetime = get_datetime(self.folder)
 
-        if os.path.exists(os.path.join(self.folder, 'fill_spec.npy')):
-            self.fill_freqs = np.load(os.path.join(self.folder, 'fill_freqs.npy'))
-            self.fill_times = np.load(os.path.join(self.folder, 'fill_times.npy'))
-            self.fill_spec_shape = np.load(os.path.join(self.folder, 'fill_spec_shape.npy'))
-            self.fill_spec = np.memmap(os.path.join(self.folder, 'fill_spec.npy'), dtype='float', mode='r',
-                                       shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]), order = 'F')
+        if os.path.exists(os.path.join(self.folder, "fill_spec.npy")):
+            self.fill_freqs = np.load(
+                os.path.join(self.folder, "fill_freqs.npy")
+            )
+            self.fill_times = np.load(
+                os.path.join(self.folder, "fill_times.npy")
+            )
+            self.fill_spec_shape = np.load(
+                os.path.join(self.folder, "fill_spec_shape.npy")
+            )
+            self.fill_spec = np.memmap(
+                os.path.join(self.folder, "fill_spec.npy"),
+                dtype="float",
+                mode="r",
+                shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]),
+                order="F",
+            )
 
-            self.Plot.fill_freqs = np.load(os.path.join(self.folder, 'fill_freqs.npy'))
-            self.Plot.fill_times = np.load(os.path.join(self.folder, 'fill_times.npy'))
-            self.Plot.fill_spec_shape = np.load(os.path.join(self.folder, 'fill_spec_shape.npy'))
-            self.Plot.fill_spec = np.memmap(os.path.join(self.folder, 'fill_spec.npy'), dtype='float', mode='r',
-                                            shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]), order = 'F')
+            self.Plot.fill_freqs = np.load(
+                os.path.join(self.folder, "fill_freqs.npy")
+            )
+            self.Plot.fill_times = np.load(
+                os.path.join(self.folder, "fill_times.npy")
+            )
+            self.Plot.fill_spec_shape = np.load(
+                os.path.join(self.folder, "fill_spec_shape.npy")
+            )
+            self.Plot.fill_spec = np.memmap(
+                os.path.join(self.folder, "fill_spec.npy"),
+                dtype="float",
+                mode="r",
+                shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]),
+                order="F",
+            )
             self.Act_fine_spec.setEnabled(True)
             self.Act_interactive_sel.setEnabled(True)
 
-        elif os.path.exists(os.path.join(self.folder, 'fine_spec.npy')):
-            self.fill_freqs = np.load(os.path.join(self.folder, 'fine_freqs.npy'))
-            self.fill_times = np.load(os.path.join(self.folder, 'fine_times.npy'))
-            self.fill_spec_shape = np.load(os.path.join(self.folder, 'fine_spec_shape.npy'))
-            self.fill_spec = np.memmap(os.path.join(self.folder, 'fine_spec.npy'), dtype='float', mode='r',
-                                       shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]), order = 'F')
+        elif os.path.exists(os.path.join(self.folder, "fine_spec.npy")):
+            self.fill_freqs = np.load(
+                os.path.join(self.folder, "fine_freqs.npy")
+            )
+            self.fill_times = np.load(
+                os.path.join(self.folder, "fine_times.npy")
+            )
+            self.fill_spec_shape = np.load(
+                os.path.join(self.folder, "fine_spec_shape.npy")
+            )
+            self.fill_spec = np.memmap(
+                os.path.join(self.folder, "fine_spec.npy"),
+                dtype="float",
+                mode="r",
+                shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]),
+                order="F",
+            )
 
-            self.Plot.fill_freqs = np.load(os.path.join(self.folder, 'fine_freqs.npy'))
-            self.Plot.fill_times = np.load(os.path.join(self.folder, 'fine_times.npy'))
-            self.Plot.fill_spec_shape = np.load(os.path.join(self.folder, 'fine_spec_shape.npy'))
-            self.Plot.fill_spec = np.memmap(os.path.join(self.folder, 'fine_spec.npy'), dtype='float', mode='r',
-                                            shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]), order = 'F')
+            self.Plot.fill_freqs = np.load(
+                os.path.join(self.folder, "fine_freqs.npy")
+            )
+            self.Plot.fill_times = np.load(
+                os.path.join(self.folder, "fine_times.npy")
+            )
+            self.Plot.fill_spec_shape = np.load(
+                os.path.join(self.folder, "fine_spec_shape.npy")
+            )
+            self.Plot.fill_spec = np.memmap(
+                os.path.join(self.folder, "fine_spec.npy"),
+                dtype="float",
+                mode="r",
+                shape=(self.fill_spec_shape[0], self.fill_spec_shape[1]),
+                order="F",
+            )
             self.Act_fine_spec.setEnabled(True)
             self.Act_interactive_sel.setEnabled(True)
 
@@ -915,15 +1314,29 @@ class MainWindow(QMainWindow):
 
         if self.Plot.spec_img_handle:
             self.Plot.spec_img_handle.remove()
-        self.Plot.spec_img_handle = self.Plot.ax.imshow(decibel(self.spectra)[::-1],
-                                              extent=[self.times[0], self.times[-1] + (self.times[1] - self.times[0]), 0, 2000],
-                                              aspect='auto',vmin = -100, vmax = -50, alpha=0.7, cmap='jet', interpolation='gaussian')
-        self.Plot.ax.set_xlabel('time', fontsize=12)
-        self.Plot.ax.set_ylabel('frequency [Hz]', fontsize=12)
+        self.Plot.spec_img_handle = self.Plot.ax.imshow(
+            decibel(self.spectra)[::-1],
+            extent=[
+                self.times[0],
+                self.times[-1] + (self.times[1] - self.times[0]),
+                0,
+                2000,
+            ],
+            aspect="auto",
+            vmin=-100,
+            vmax=-50,
+            alpha=0.7,
+            cmap="jet",
+            interpolation="gaussian",
+        )
+        self.Plot.ax.set_xlabel("time", fontsize=12)
+        self.Plot.ax.set_ylabel("frequency [Hz]", fontsize=12)
         self.Plot.ax.set_xlim(self.start_time, self.end_time)
         self.Plot.ax.set_ylim(400, 1000)
 
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task='init')
+        self.Plot.plot_traces(
+            self.ident_v, self.times, self.idx_v, self.fund_v, task="init"
+        )
 
         self.Plot.clock_time(self.rec_datetime, self.times)
 
@@ -982,15 +1395,29 @@ class MainWindow(QMainWindow):
 
         xlim = np.array(sorted([self.x0, self.x1]))
         ylim = np.array(sorted([self.y0, self.y1]))
-        f_mask = np.arange(len(self.fill_freqs))[(self.fill_freqs >= ylim[0]) & (self.fill_freqs <= ylim[1])]
-        t_mask = np.arange(len(self.fill_times))[(self.fill_times >= xlim[0]) & (self.fill_times <= xlim[1])]
-        ioi = np.argmax(self.fill_spec[f_mask[0]:f_mask[-1]+1, t_mask[0]:t_mask[-1]+1], axis=0)
+        f_mask = np.arange(len(self.fill_freqs))[
+            (self.fill_freqs >= ylim[0]) & (self.fill_freqs <= ylim[1])
+        ]
+        t_mask = np.arange(len(self.fill_times))[
+            (self.fill_times >= xlim[0]) & (self.fill_times <= xlim[1])
+        ]
+        ioi = np.argmax(
+            self.fill_spec[
+                f_mask[0] : f_mask[-1] + 1, t_mask[0] : t_mask[-1] + 1
+            ],
+            axis=0,
+        )
 
         power_freqs = self.fill_freqs[f_mask][ioi]
         # power_idxs = t_mask
 
         ########################
-        power_idxs = list(map(lambda x: np.argmin(np.abs(self.times - x)), self.fill_times[t_mask]))
+        power_idxs = list(
+            map(
+                lambda x: np.argmin(np.abs(self.times - x)),
+                self.fill_times[t_mask],
+            )
+        )
         ########################
 
         # mask = [enu for enu, i in enumerate(t_mask) if i not in self.idx_v[self.ident_v == self.active_id]]
@@ -1001,21 +1428,32 @@ class MainWindow(QMainWindow):
         power_ident = np.ones(len(power_freqs)) * next_ident
 
         # self.Plot.ax.plot(self.fill_times[power_idxs], power_freqs, marker = '.')
-        self.Plot.ax.plot(self.times[power_idxs], power_freqs, marker = '.')
+        self.Plot.ax.plot(self.times[power_idxs], power_freqs, marker=".")
         # self.Plot.ax.plot(self.fill_times[t_mask], power_freqs, marker = '.')
         self.Plot.figure.canvas.draw()
 
         self.idx_v = np.append(self.idx_v, power_idxs, 0)
         self.fund_v = np.append(self.fund_v, power_freqs, 0)
         self.ident_v = np.append(self.ident_v, power_ident, 0)
-        self.sign_v = np.append(self.sign_v, np.full((len(power_ident), self.sign_v.shape[1]), np.nan), 0)
+        self.sign_v = np.append(
+            self.sign_v,
+            np.full((len(power_ident), self.sign_v.shape[1]), np.nan),
+            0,
+        )
         sorter = np.argsort(self.idx_v)
         self.idx_v = self.idx_v[sorter]
         self.fund_v = self.fund_v[sorter]
         self.ident_v = self.ident_v[sorter]
         self.sign_v = self.sign_v[sorter]
 
-        self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task='post_new_assign', active_id=next_ident)
+        self.Plot.plot_traces(
+            self.ident_v,
+            self.times,
+            self.idx_v,
+            self.fund_v,
+            task="post_new_assign",
+            active_id=next_ident,
+        )
         self.Plot.canvas.draw()
 
     def buttonpress(self, e):
@@ -1049,43 +1487,87 @@ class MainWindow(QMainWindow):
         if self.Act_interactive_cut.isChecked():
             self.get_active_idx_rect()
 
-            if hasattr(self.active_idx, '__len__') and not self.Plot.active_id_handle0:
+            if (
+                hasattr(self.active_idx, "__len__")
+                and not self.Plot.active_id_handle0
+            ):
                 if len(self.active_idx) > 0:
                     self.get_active_id(self.active_idx)
-                    self.Plot.highlight_id(self.active_id, self.ident_v, self.times, self.idx_v, self.fund_v, 'first')
+                    self.Plot.highlight_id(
+                        self.active_id,
+                        self.ident_v,
+                        self.times,
+                        self.idx_v,
+                        self.fund_v,
+                        "first",
+                    )
                     self.Plot.canvas.draw()
 
             else:
                 self.get_active_idx_in_trace()
-                self.Plot.highlight_cut(self.active_idx_in_trace, self.times, self.idx_v, self.fund_v)
+                self.Plot.highlight_cut(
+                    self.active_idx_in_trace,
+                    self.times,
+                    self.idx_v,
+                    self.fund_v,
+                )
                 self.Plot.canvas.draw()
 
         if self.Act_interactive_con.isChecked():
             self.get_active_idx_rect()
 
-            if hasattr(self.active_idx, '__len__') and not hasattr(self.active_idx2, '__len__'):
+            if hasattr(self.active_idx, "__len__") and not hasattr(
+                self.active_idx2, "__len__"
+            ):
                 if len(self.active_idx) > 0:
                     self.get_active_id(self.active_idx)
-                    self.Plot.highlight_id(self.active_id, self.ident_v, self.times, self.idx_v, self.fund_v, 'first')
+                    self.Plot.highlight_id(
+                        self.active_id,
+                        self.ident_v,
+                        self.times,
+                        self.idx_v,
+                        self.fund_v,
+                        "first",
+                    )
                     self.Plot.canvas.draw()
 
-            elif hasattr(self.active_idx2, '__len__'):
+            elif hasattr(self.active_idx2, "__len__"):
                 if len(self.active_idx2) > 0:
                     self.get_active_id(self.active_idx2)
-                    self.Plot.highlight_id(self.active_id2, self.ident_v, self.times, self.idx_v, self.fund_v, 'second')
+                    self.Plot.highlight_id(
+                        self.active_id2,
+                        self.ident_v,
+                        self.times,
+                        self.idx_v,
+                        self.fund_v,
+                        "second",
+                    )
                     self.Plot.canvas.draw()
 
         if self.Act_interactive_del.isChecked():
             self.get_active_idx_rect()
             if len(self.active_idx) > 0:
                 self.get_active_id(self.active_idx)
-                self.Plot.highlight_id(self.active_id, self.ident_v, self.times, self.idx_v, self.fund_v, 'first')
+                self.Plot.highlight_id(
+                    self.active_id,
+                    self.ident_v,
+                    self.times,
+                    self.idx_v,
+                    self.fund_v,
+                    "first",
+                )
                 self.Plot.canvas.draw()
 
         if self.Act_interactive_GrCon.isChecked():
             self.get_active_idx_rect()
             if len(self.active_idx) > 0:
-                self.Plot.highlight_group(self.active_idx, self.ident_v, self.times, self.idx_v, self.fund_v)
+                self.Plot.highlight_group(
+                    self.active_idx,
+                    self.ident_v,
+                    self.times,
+                    self.idx_v,
+                    self.fund_v,
+                )
                 self.Plot.canvas.draw()
 
         if self.Act_interactive_newassign.isChecked():
@@ -1095,13 +1577,25 @@ class MainWindow(QMainWindow):
                 self.get_active_idx_rect()
 
             if len(self.active_idx) > 0:
-                self.Plot.highlight_group(self.active_idx, self.ident_v, self.times, self.idx_v, self.fund_v)
+                self.Plot.highlight_group(
+                    self.active_idx,
+                    self.ident_v,
+                    self.times,
+                    self.idx_v,
+                    self.fund_v,
+                )
             self.Plot.canvas.draw()
 
         if self.Act_interactive_GrDel.isChecked():
             self.get_active_idx_rect()
             if len(self.active_idx) > 0:
-                self.Plot.highlight_group(self.active_idx, self.ident_v, self.times, self.idx_v, self.fund_v)
+                self.Plot.highlight_group(
+                    self.active_idx,
+                    self.ident_v,
+                    self.times,
+                    self.idx_v,
+                    self.fund_v,
+                )
                 self.Plot.canvas.draw()
 
     def keyPressEvent(self, e):
@@ -1157,47 +1651,74 @@ class MainWindow(QMainWindow):
         self.Plot.figure.canvas.draw()
 
     def Msave_plt(self):
-        dir_name='wavetracker-plots'           # dir name
-        dir_path=os.path.join('../'+dir_name)  # relative dir path
-        img_format='.pdf'
-        recdate=int(self.rec_datetime.strftime("%Y%m%d%H%M%S"))
-        plottime=str(int(self.Plot.xlim[0]))+'-'+str(int(self.Plot.xlim[1]))
-        plotfreq=str(int(self.Plot.ylim[0]))+'-'+str(int(self.Plot.ylim[1])) 
-        img_name='rec'+str(recdate)+'_secs'+plottime+'_freqs'+plotfreq+img_format
-        img_path=os.path.join(dir_path+'/'+img_name)
+        dir_name = "wavetracker-plots"  # dir name
+        dir_path = os.path.join("../" + dir_name)  # relative dir path
+        img_format = ".pdf"
+        recdate = int(self.rec_datetime.strftime("%Y%m%d%H%M%S"))
+        plottime = (
+            str(int(self.Plot.xlim[0])) + "-" + str(int(self.Plot.xlim[1]))
+        )
+        plotfreq = (
+            str(int(self.Plot.ylim[0])) + "-" + str(int(self.Plot.ylim[1]))
+        )
+        img_name = (
+            "rec"
+            + str(recdate)
+            + "_secs"
+            + plottime
+            + "_freqs"
+            + plotfreq
+            + img_format
+        )
+        img_path = os.path.join(dir_path + "/" + img_name)
 
-        try: # test if dir exists
+        try:  # test if dir exists
             os.listdir(dir_path)
-        except (IOError, OSError): # creates if not exists
-            print('No existing plot directory found. Creating directory ...')
-            try: 
+        except OSError:  # creates if not exists
+            print("No existing plot directory found. Creating directory ...")
+            try:
                 os.mkdir(dir_path)
-            except (IOError, OSError): # print error when fails 
-                print(color.RED+color.BOLD+'Error: Failed to create new plot directory!'+color.END)
-            else: # check if dir was created
-                start = os.path.realpath('..')
+            except OSError:  # print error when fails
+                print(
+                    color.RED
+                    + color.BOLD
+                    + "Error: Failed to create new plot directory!"
+                    + color.END
+                )
+            else:  # check if dir was created
+                start = os.path.realpath("..")
                 for dirpath, dirnames, filenames in os.walk(start):
                     for dirname in dirnames:
                         if dirname == dir_name:
-                            path = os.path.join(dirpath+'/'+dirname)
-                print(color.GREEN+'New plot directory created in %s' %path + color.END) # print new dir location
+                            path = os.path.join(dirpath + "/" + dirname)
+                print(
+                    color.GREEN
+                    + "New plot directory created in %s" % path
+                    + color.END
+                )  # print new dir location
         else:
             abs_dir_path = os.path.abspath(dir_path)
-            print(color.GREEN+'Existing plot directory found in %s' %abs_dir_path + color.END) # print existing dir location
+            print(
+                color.GREEN
+                + "Existing plot directory found in %s" % abs_dir_path
+                + color.END
+            )  # print existing dir location
 
-        try: # try saving image
+        try:  # try saving image
             # for handle in self.Plot.trace_handles:
             #     handle[0].remove()
             # self.Plot.figure.set_size_inches(10/2.54, 10/2.54)
             # plt.subplots_adjust(left=0.2, right=0.95, bottom=0.15, top=0.95)
             # self.Plot.ax.set_yticklabels(self.Plot.ax.get_yticklabels(), fontsize=12)
             # self.Plot.ax.set_xticklabels(self.Plot.ax.get_xticklabels(), fontsize=12)
-            self.Plot.figure.savefig(img_path) # save plot
-        except (IOError, OSError): # print error message if fails
-            print(color.RED+color.BOLD+'Failed saving image!'+color.END)
+            self.Plot.figure.savefig(img_path)  # save plot
+        except OSError:  # print error message if fails
+            print(color.RED + color.BOLD + "Failed saving image!" + color.END)
         else:
-            abs_img_path=os.path.abspath(img_path)
-            print(color.GREEN+'Image saved in %s' %abs_img_path + color.END) # print path to image
+            abs_img_path = os.path.abspath(img_path)
+            print(
+                color.GREEN + "Image saved in %s" % abs_img_path + color.END
+            )  # print path to image
 
     def Mfine_spec(self):
         ylim = self.Plot.ylim
@@ -1205,45 +1726,76 @@ class MainWindow(QMainWindow):
 
         if self.Plot.spec_img_handle:
             self.Plot.spec_img_handle.remove()
-        print('try')
+        print("try")
         print(ylim[0], ylim[1])
         print(xlim[0], xlim[1])
 
-        f_mask = np.arange(len(self.fill_freqs))[(self.fill_freqs >= ylim[0]) & (self.fill_freqs <= ylim[1])]
-        t_mask = np.arange(len(self.fill_times))[(self.fill_times >= xlim[0]) & (self.fill_times <= xlim[1])]
+        f_mask = np.arange(len(self.fill_freqs))[
+            (self.fill_freqs >= ylim[0]) & (self.fill_freqs <= ylim[1])
+        ]
+        t_mask = np.arange(len(self.fill_times))[
+            (self.fill_times >= xlim[0]) & (self.fill_times <= xlim[1])
+        ]
         print(len(f_mask))
         print(len(t_mask))
         print(np.shape(self.spectra))
 
-        print('plotting...')
-        self.Plot.spec_img_handle = self.Plot.ax.imshow(decibel(self.fill_spec[f_mask[0]:f_mask[-1], t_mask[0]:t_mask[-1]][::-1]),
-                                              extent=[xlim[0], xlim[1], ylim[0], ylim[1]],
-                                              aspect='auto',vmin = -100, vmax = -50, alpha=0.7, cmap='jet', interpolation='gaussian')
-        print('showing ...')
+        print("plotting...")
+        self.Plot.spec_img_handle = self.Plot.ax.imshow(
+            decibel(
+                self.fill_spec[f_mask[0] : f_mask[-1], t_mask[0] : t_mask[-1]][
+                    ::-1
+                ]
+            ),
+            extent=[xlim[0], xlim[1], ylim[0], ylim[1]],
+            aspect="auto",
+            vmin=-100,
+            vmax=-50,
+            alpha=0.7,
+            cmap="jet",
+            interpolation="gaussian",
+        )
+        print("showing ...")
         self.Plot.figure.canvas.draw()
-        print('yay')
+        print("yay")
 
     def Mnorm_spec(self):
         if self.Plot.spec_img_handle:
             self.Plot.spec_img_handle.remove()
-        self.Plot.spec_img_handle = self.Plot.ax.imshow(decibel(self.spectra)[::-1],
-                                              extent=[self.times[0], self.times[-1] + (self.times[1] - self.times[0]), 0, 2000],
-                                              aspect='auto',vmin = -100, vmax = -50, alpha=0.7, cmap='jet', interpolation='gaussian')
+        self.Plot.spec_img_handle = self.Plot.ax.imshow(
+            decibel(self.spectra)[::-1],
+            extent=[
+                self.times[0],
+                self.times[-1] + (self.times[1] - self.times[0]),
+                0,
+                2000,
+            ],
+            aspect="auto",
+            vmin=-100,
+            vmax=-50,
+            alpha=0.7,
+            cmap="jet",
+            interpolation="gaussian",
+        )
         self.Plot.figure.canvas.draw()
         pass
 
     def undo(self):
-        if hasattr(self.last_ident_v, '__len__'):
+        if hasattr(self.last_ident_v, "__len__"):
             if self.cb_SCH_MCH.currentIndex() == 0:
-                self.all_ident_v[self.cb_channel.currentIndex()] = self.last_ident_v
+                self.all_ident_v[self.cb_channel.currentIndex()] = (
+                    self.last_ident_v
+                )
                 self.ident_v = self.all_ident_v[self.cb_channel.currentIndex()]
             elif self.cb_SCH_MCH.currentIndex() == 1:
                 self.ident_v = self.last_ident_v
             else:
-                print('impossible')
+                print("impossible")
                 pass
             # self.ident_v = self.last_ident_v
-            self.Plot.plot_traces(self.ident_v, self.times, self.idx_v, self.fund_v, task='init')
+            self.Plot.plot_traces(
+                self.ident_v, self.times, self.idx_v, self.fund_v, task="init"
+            )
 
             self.reset_variables()
             self.Plot.canvas.draw()
@@ -1251,7 +1803,7 @@ class MainWindow(QMainWindow):
     def execute(self):
         self.last_ident_v = np.copy(self.ident_v)
         if self.Act_interactive_newassign.isChecked():
-            if hasattr(self.active_idx, '__len__'):
+            if hasattr(self.active_idx, "__len__"):
                 self.new_assign()
 
         if self.Act_interactive_cut.isChecked():
@@ -1267,17 +1819,18 @@ class MainWindow(QMainWindow):
                 self.delete()
 
         if self.Act_interactive_GrCon.isChecked():
-            if hasattr(self.active_idx, '__len__'):
+            if hasattr(self.active_idx, "__len__"):
                 self.get_active_group_ids()
                 self.group_connect()
 
         if self.Act_interactive_GrDel.isChecked():
-            if hasattr(self.active_idx, '__len__'):
+            if hasattr(self.active_idx, "__len__"):
                 self.get_active_group_ids()
                 self.group_delete()
 
+
 def main():
-    print('test')
+    print("test")
     app = QApplication(sys.argv)  # create application
     folder = None if len(sys.argv) < 2 else sys.argv[1]
     w = MainWindow(folder)  # create window
@@ -1285,5 +1838,6 @@ def main():
     w.show()
     sys.exit(app.exec_())  # exit if window is closed
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

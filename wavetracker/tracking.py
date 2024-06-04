@@ -1,16 +1,27 @@
-import matplotlib.gridspec as gridspec
 from plottools.colors import *
+
 colors_params(colors_muted, colors_tableau)
 import os
 import sys
 import time
+
 from IPython import embed
-from tqdm import tqdm
 from PyQt5.QtCore import *
+from tqdm import tqdm
 
 
-def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10., min_freq=200, max_freq=1200,
-                     verbose=0, **kwargs):
+def freq_tracking_v6(
+    fund_v,
+    idx_v,
+    sign_v,
+    times,
+    freq_tolerance=2.5,
+    max_dt=10.0,
+    min_freq=200,
+    max_freq=1200,
+    verbose=0,
+    **kwargs,
+):
     """
     Sorting algorithm tracking signal of wavetype electric fish detected in consecutive powespectra of single or
     multielectrode recordings using frequency difference in EOD frequency and frequnency-power amplitude difference
@@ -61,7 +72,15 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
         Assigned identities of the signals passed to the algorithm.
     """
 
-    def get_amplitude_error_dist(fund_v, idx_v, norm_sign_v, start_idx, idx_comp_range, min_freq, max_freq):
+    def get_amplitude_error_dist(
+        fund_v,
+        idx_v,
+        norm_sign_v,
+        start_idx,
+        idx_comp_range,
+        min_freq,
+        max_freq,
+    ):
         """
         Collect a amplitude error distribution for a given data snippet (defined by start_idx and idx_compare_range).
         This distribution is later used to compute relative amplitude errors, by assessing how many amplitude errors
@@ -97,33 +116,62 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
         i0s = []
         i1s = []
 
-        for i in tqdm(range(start_idx, int(start_idx + idx_comp_range * 3)), desc='error dist'):
-
+        for i in tqdm(
+            range(start_idx, int(start_idx + idx_comp_range * 3)),
+            desc="error dist",
+        ):
             i0_v = np.arange(len(idx_v))[
-                (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)]  # indices of fundamtenals to assign
+                (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)
+            ]  # indices of fundamtenals to assign
             i1_v = np.arange(len(idx_v))[
-                (idx_v > i) & (idx_v <= (i + int(idx_comp_range))) & (fund_v >= min_freq) & (
-                            fund_v <= max_freq)]  # indices of possible targets
+                (idx_v > i)
+                & (idx_v <= (i + int(idx_comp_range)))
+                & (fund_v >= min_freq)
+                & (fund_v <= max_freq)
+            ]  # indices of possible targets
 
-            if len(i0_v) == 0 or len(i1_v) == 0:  # if nothing to assign or no targets continue
+            if (
+                len(i0_v) == 0 or len(i1_v) == 0
+            ):  # if nothing to assign or no targets continue
                 continue
 
             for enu0 in range(len(fund_v[i0_v])):
-                if fund_v[i0_v[enu0]] < min_freq or fund_v[i0_v[enu0]] > max_freq:
+                if (
+                    fund_v[i0_v[enu0]] < min_freq
+                    or fund_v[i0_v[enu0]] > max_freq
+                ):
                     continue
                 for enu1 in range(len(fund_v[i1_v])):
-                    if fund_v[i1_v[enu1]] < min_freq or fund_v[i1_v[enu1]] > max_freq:
+                    if (
+                        fund_v[i1_v[enu1]] < min_freq
+                        or fund_v[i1_v[enu1]] > max_freq
+                    ):
                         continue
-                    a_error_distribution.append(np.sqrt(np.sum(
-                        [(norm_sign_v[i0_v[enu0]][k] - norm_sign_v[i1_v[enu1]][k]) ** 2 for k in
-                         range(len(norm_sign_v[i0_v[enu0]]))])))
+                    a_error_distribution.append(
+                        np.sqrt(
+                            np.sum(
+                                [
+                                    (
+                                        norm_sign_v[i0_v[enu0]][k]
+                                        - norm_sign_v[i1_v[enu1]][k]
+                                    )
+                                    ** 2
+                                    for k in range(
+                                        len(norm_sign_v[i0_v[enu0]])
+                                    )
+                                ]
+                            )
+                        )
+                    )
                     i0s.append(i0_v[enu0])
                     i1s.append(i1_v[enu1])
 
         a_error_distribution = np.array(a_error_distribution)
         return a_error_distribution
 
-    def create_error_cube(i0_m, i1_m, error_cube, cube_app_idx, min_freq, max_freq, update=False):
+    def create_error_cube(
+        i0_m, i1_m, error_cube, cube_app_idx, min_freq, max_freq, update=False
+    ):
         """
         Generates or updates an errorc-cube containing the signal errors between potential origin and target signals in
         a predefined data snippet.
@@ -185,36 +233,69 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
 
         for i in Citt:
             i0_v = np.arange(len(idx_v))[
-                (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)]  # indices of fundamtenals to assign
+                (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)
+            ]  # indices of fundamtenals to assign
             i1_v = np.arange(len(idx_v))[
-                (idx_v > i) & (idx_v <= (i + int(idx_comp_range))) & (fund_v >= min_freq) & (
-                            fund_v <= max_freq)]  # indices of possible targets
+                (idx_v > i)
+                & (idx_v <= (i + int(idx_comp_range)))
+                & (fund_v >= min_freq)
+                & (fund_v <= max_freq)
+            ]  # indices of possible targets
 
             i0_m.append(i0_v)
             i1_m.append(i1_v)
 
-            if len(i0_v) == 0 or len(i1_v) == 0:  # if nothing to assign or no targets continue
+            if (
+                len(i0_v) == 0 or len(i1_v) == 0
+            ):  # if nothing to assign or no targets continue
                 error_cube.append(np.array([[]]))
                 continue
 
             error_matrix = np.full((len(i0_v), len(i1_v)), np.nan)
 
             for enu0 in range(len(fund_v[i0_v])):
-                if fund_v[i0_v[enu0]] < min_freq or fund_v[i0_v[enu0]] > max_freq:  # ToDo:should be obsolete
+                if (
+                    fund_v[i0_v[enu0]] < min_freq
+                    or fund_v[i0_v[enu0]] > max_freq
+                ):  # ToDo:should be obsolete
                     continue
                 for enu1 in range(len(fund_v[i1_v])):
-                    if fund_v[i1_v[enu1]] < min_freq or fund_v[i1_v[enu1]] > max_freq:  # ToDo:should be obsolete
+                    if (
+                        fund_v[i1_v[enu1]] < min_freq
+                        or fund_v[i1_v[enu1]] > max_freq
+                    ):  # ToDo:should be obsolete
                         continue
 
-                    if np.abs(fund_v[i0_v[enu0]] - fund_v[i1_v[enu1]]) >= freq_tolerance:  # freq difference to high
+                    if (
+                        np.abs(fund_v[i0_v[enu0]] - fund_v[i1_v[enu1]])
+                        >= freq_tolerance
+                    ):  # freq difference to high
                         continue
                     a_error = np.sqrt(
-                        np.sum([(norm_sign_v[i0_v[enu0]][j] - norm_sign_v[i1_v[enu1]][j]) ** 2 for j in range(channels)]))
+                        np.sum(
+                            [
+                                (
+                                    norm_sign_v[i0_v[enu0]][j]
+                                    - norm_sign_v[i1_v[enu1]][j]
+                                )
+                                ** 2
+                                for j in range(channels)
+                            ]
+                        )
+                    )
                     f_error = np.abs(fund_v[i0_v[enu0]] - fund_v[i1_v[enu1]])
-                    t_error = 1. * np.abs(idx_v[i0_v[enu0]] - idx_v[i1_v[enu1]]) / dps
+                    t_error = (
+                        1.0
+                        * np.abs(idx_v[i0_v[enu0]] - idx_v[i1_v[enu1]])
+                        / dps
+                    )
 
-                    rel_amplitude_error, rel_frequency_error = estimate_error(a_error, f_error, a_error_distribution)
-                    error_matrix[enu0, enu1] = rel_amplitude_error + rel_frequency_error
+                    rel_amplitude_error, rel_frequency_error = estimate_error(
+                        a_error, f_error, a_error_distribution
+                    )
+                    error_matrix[enu0, enu1] = (
+                        rel_amplitude_error + rel_frequency_error
+                    )
             error_cube.append(error_matrix)
 
         if update:
@@ -224,7 +305,9 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
 
         return error_cube, i0_m, i1_m, cube_app_idx
 
-    def get_tmp_identities(i0_m, i1_m, error_cube, fund_v, idx_v, start_idx, idx_comp_range):
+    def get_tmp_identities(
+        i0_m, i1_m, error_cube, fund_v, idx_v, start_idx, idx_comp_range
+    ):
         """
 
 
@@ -258,25 +341,34 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
             Contains for each assigned temporal identity the error value based on which this connection was established.
 
         """
-
         next_tmp_identity = 0
 
-        max_shape = np.max([np.shape(layer) for layer in error_cube[1:]], axis=0)
-        cp_error_cube = np.full((len(error_cube) - 1, max_shape[0], max_shape[1]), np.nan)
+        max_shape = np.max(
+            [np.shape(layer) for layer in error_cube[1:]], axis=0
+        )
+        cp_error_cube = np.full(
+            (len(error_cube) - 1, max_shape[0], max_shape[1]), np.nan
+        )
         for enu, layer in enumerate(error_cube[1:]):
-            cp_error_cube[enu, :np.shape(error_cube[enu + 1])[0], :np.shape(error_cube[enu + 1])[1]] = layer
+            cp_error_cube[
+                enu,
+                : np.shape(error_cube[enu + 1])[0],
+                : np.shape(error_cube[enu + 1])[1],
+            ] = layer
 
         min_i0 = np.min(np.hstack(i0_m))
         max_i1 = np.max(np.hstack(i1_m))
         tmp_ident_v = np.full(max_i1 - min_i0 + 1, np.nan)
         errors_to_v = np.full(max_i1 - min_i0 + 1, np.nan)
-        tmp_idx_v = idx_v[min_i0:max_i1 + 1]
-        tmp_fund_v = fund_v[min_i0:max_i1 + 1]
+        tmp_idx_v = idx_v[min_i0 : max_i1 + 1]
+        tmp_fund_v = fund_v[min_i0 : max_i1 + 1]
 
         i0_m = np.array(i0_m, dtype=object) - min_i0
         i1_m = np.array(i1_m, dtype=object) - min_i0
 
-        layers, idx0s, idx1s = np.unravel_index(np.argsort(cp_error_cube, axis=None), np.shape(cp_error_cube))
+        layers, idx0s, idx1s = np.unravel_index(
+            np.argsort(cp_error_cube, axis=None), np.shape(cp_error_cube)
+        )
 
         made_connections = np.zeros(np.shape(cp_error_cube))
         not_made_connections = np.zeros(np.shape(cp_error_cube))
@@ -284,11 +376,18 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
 
         layers = layers + 1
 
-        i_non_nan = len(cp_error_cube[layers - 1, idx0s, idx1s][~np.isnan(cp_error_cube[layers - 1, idx0s, idx1s])])
+        i_non_nan = len(
+            cp_error_cube[layers - 1, idx0s, idx1s][
+                ~np.isnan(cp_error_cube[layers - 1, idx0s, idx1s])
+            ]
+        )
 
-
-        for enu, layer, idx0, idx1 in zip(np.arange(i_non_nan), layers[:i_non_nan], idx0s[:i_non_nan], idx1s[:i_non_nan]):
-
+        for enu, layer, idx0, idx1 in zip(
+            np.arange(i_non_nan),
+            layers[:i_non_nan],
+            idx0s[:i_non_nan],
+            idx1s[:i_non_nan],
+        ):
             if np.isnan(cp_error_cube[layer - 1, idx0, idx1]):
                 break
 
@@ -301,93 +400,136 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
                 if np.isnan(tmp_ident_v[i1_m[layer][idx1]]):
                     tmp_ident_v[i0_m[layer][idx0]] = next_tmp_identity
                     tmp_ident_v[i1_m[layer][idx1]] = next_tmp_identity
-                    errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][idx0, idx1]
+                    errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][
+                        idx0, idx1
+                    ]
                     not_made_connections[layer - 1, idx0, idx1] = 0
                     made_connections[layer - 1, idx0, idx1] = 1
                     next_tmp_identity += 1
 
                     tmp_ident_v_ret = np.full(len(fund_v), np.nan)
-                    tmp_ident_v_ret[min_i0:max_i1 + 1] = tmp_ident_v
+                    tmp_ident_v_ret[min_i0 : max_i1 + 1] = tmp_ident_v
 
                 else:
-                    mask = np.arange(len(tmp_ident_v))[tmp_ident_v == tmp_ident_v[i1_m[layer][idx1]]]  # idxs of target
-                    if tmp_idx_v[i0_m[layer][idx0]] in tmp_idx_v[mask]:  # if goal already in target continue
+                    mask = np.arange(len(tmp_ident_v))[
+                        tmp_ident_v == tmp_ident_v[i1_m[layer][idx1]]
+                    ]  # idxs of target
+                    if (
+                        tmp_idx_v[i0_m[layer][idx0]] in tmp_idx_v[mask]
+                    ):  # if goal already in target continue
                         continue
 
-                    same_id_idx = np.arange(len(tmp_ident_v))[tmp_ident_v == tmp_ident_v[i1_m[layer][idx1]]]
-                    f_after = tmp_fund_v[same_id_idx[same_id_idx > i0_m[layer][idx0]]]
-                    f_before = tmp_fund_v[same_id_idx[same_id_idx < i0_m[layer][idx0]]]
+                    same_id_idx = np.arange(len(tmp_ident_v))[
+                        tmp_ident_v == tmp_ident_v[i1_m[layer][idx1]]
+                    ]
+                    f_after = tmp_fund_v[
+                        same_id_idx[same_id_idx > i0_m[layer][idx0]]
+                    ]
+                    f_before = tmp_fund_v[
+                        same_id_idx[same_id_idx < i0_m[layer][idx0]]
+                    ]
                     compare_freqs = []
                     if len(f_after) > 0:
                         compare_freqs.append(f_after[0])
                     if len(f_before) > 0:
                         compare_freqs.append(f_before[-1])
 
-                    if len(compare_freqs) == 0:
+                    if len(compare_freqs) == 0 or np.all(
+                        np.abs(
+                            np.array(compare_freqs)
+                            - tmp_fund_v[i0_m[layer][idx0]]
+                        )
+                        > 0.5
+                    ):
                         continue
-                    else:
-                        if np.all(np.abs(np.array(compare_freqs) - tmp_fund_v[i0_m[layer][idx0]]) > 0.5):
-                            continue
 
-                    tmp_ident_v[i0_m[layer][idx0]] = tmp_ident_v[i1_m[layer][idx1]]
+                    tmp_ident_v[i0_m[layer][idx0]] = tmp_ident_v[
+                        i1_m[layer][idx1]
+                    ]
 
-                    errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][idx0, idx1]
+                    errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][
+                        idx0, idx1
+                    ]
                     not_made_connections[layer - 1, idx0, idx1] = 0
                     made_connections[layer - 1, idx0, idx1] = 1
 
                     tmp_ident_v_ret = np.full(len(fund_v), np.nan)
-                    tmp_ident_v_ret[min_i0:max_i1 + 1] = tmp_ident_v
+                    tmp_ident_v_ret[min_i0 : max_i1 + 1] = tmp_ident_v
 
+            elif np.isnan(tmp_ident_v[i1_m[layer][idx1]]):
+                mask = np.arange(len(tmp_ident_v))[
+                    tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]
+                ]
+                if tmp_idx_v[i1_m[layer][idx1]] in tmp_idx_v[mask]:
+                    continue
+
+                tmp_ident_v[i1_m[layer][idx1]] = tmp_ident_v[i0_m[layer][idx0]]
+                errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][
+                    idx0, idx1
+                ]
+                not_made_connections[layer - 1, idx0, idx1] = 0
+                made_connections[layer - 1, idx0, idx1] = 1
+
+                tmp_ident_v_ret = np.full(len(fund_v), np.nan)
+                tmp_ident_v_ret[min_i0 : max_i1 + 1] = tmp_ident_v
 
             else:
-                if np.isnan(tmp_ident_v[i1_m[layer][idx1]]):
-                    mask = np.arange(len(tmp_ident_v))[tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]]
-                    if tmp_idx_v[i1_m[layer][idx1]] in tmp_idx_v[mask]:
-                        continue
+                if (
+                    tmp_ident_v[i0_m[layer][idx0]]
+                    == tmp_ident_v[i1_m[layer][idx1]]
+                ):
+                    if np.isnan(errors_to_v[i1_m[layer][idx1]]):
+                        errors_to_v[i1_m[layer][idx1]] = cp_error_cube[
+                            layer - 1
+                        ][idx0, idx1]
+                    continue
 
+                mask = np.arange(len(tmp_ident_v))[
+                    tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]
+                ]
+                idxs_i0 = tmp_idx_v[mask]
+                mask = np.arange(len(tmp_ident_v))[
+                    tmp_ident_v == tmp_ident_v[i1_m[layer][idx1]]
+                ]
+                idxs_i1 = tmp_idx_v[mask]
 
-                    tmp_ident_v[i1_m[layer][idx1]] = tmp_ident_v[i0_m[layer][idx0]]
-                    errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][idx0, idx1]
+                if np.any(
+                    np.diff(sorted(np.concatenate((idxs_i0, idxs_i1)))) == 0
+                ):
+                    continue
+
+                tmp_ident_v[tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]] = (
+                    tmp_ident_v[i1_m[layer][idx1]]
+                )
+
+                if np.isnan(errors_to_v[i1_m[layer][idx1]]):
+                    errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][
+                        idx0, idx1
+                    ]
                     not_made_connections[layer - 1, idx0, idx1] = 0
                     made_connections[layer - 1, idx0, idx1] = 1
 
-                    tmp_ident_v_ret = np.full(len(fund_v), np.nan)
-                    tmp_ident_v_ret[min_i0:max_i1 + 1] = tmp_ident_v
-
-                else:
-                    if tmp_ident_v[i0_m[layer][idx0]] == tmp_ident_v[i1_m[layer][idx1]]:
-                        if np.isnan(errors_to_v[i1_m[layer][idx1]]):
-                            errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][idx0, idx1]
-                        continue
-
-                    mask = np.arange(len(tmp_ident_v))[tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]]
-                    idxs_i0 = tmp_idx_v[mask]
-                    mask = np.arange(len(tmp_ident_v))[tmp_ident_v == tmp_ident_v[i1_m[layer][idx1]]]
-                    idxs_i1 = tmp_idx_v[mask]
-
-                    if np.any(np.diff(sorted(np.concatenate((idxs_i0, idxs_i1)))) == 0):
-                        continue
-
-                    tmp_ident_v[tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]] = tmp_ident_v[i1_m[layer][idx1]]
-
-                    if np.isnan(errors_to_v[i1_m[layer][idx1]]):
-                        errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][idx0, idx1]
-                        not_made_connections[layer - 1, idx0, idx1] = 0
-                        made_connections[layer - 1, idx0, idx1] = 1
-
-                    tmp_ident_v_ret = np.full(len(fund_v), np.nan)
-                    tmp_ident_v_ret[min_i0:max_i1 + 1] = tmp_ident_v
-
-
+                tmp_ident_v_ret = np.full(len(fund_v), np.nan)
+                tmp_ident_v_ret[min_i0 : max_i1 + 1] = tmp_ident_v
 
         tmp_ident_v_ret = np.full(len(fund_v), np.nan)
-        tmp_ident_v_ret[min_i0:max_i1 + 1] = tmp_ident_v
+        tmp_ident_v_ret[min_i0 : max_i1 + 1] = tmp_ident_v
 
         return tmp_ident_v_ret, errors_to_v
 
-
-    def assign_tmp_ids(ident_v, tmp_ident_v, idx_v, fund_v, error_cube, idx_comp_range, next_identity, i0_m, i1_m,
-                       min_freq, max_freq):
+    def assign_tmp_ids(
+        ident_v,
+        tmp_ident_v,
+        idx_v,
+        fund_v,
+        error_cube,
+        idx_comp_range,
+        next_identity,
+        i0_m,
+        i1_m,
+        min_freq,
+        max_freq,
+    ):
         """
         Appends valid parts of temporal identity vecor to indentity traces extracted in previous tracking steps.
 
@@ -432,29 +574,48 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
                 Next identity to be assigned that is not present in ident_v so far.
         """
         max_shape = np.max([np.shape(layer) for layer in error_cube], axis=0)
-        cp_error_cube = np.full((len(error_cube), max_shape[0], max_shape[1]), np.nan)
+        cp_error_cube = np.full(
+            (len(error_cube), max_shape[0], max_shape[1]), np.nan
+        )
         for enu, layer in enumerate(error_cube):
-            cp_error_cube[enu, :np.shape(error_cube[enu])[0], :np.shape(error_cube[enu])[1]] = layer
+            cp_error_cube[
+                enu,
+                : np.shape(error_cube[enu])[0],
+                : np.shape(error_cube[enu])[1],
+            ] = layer
 
-        layers, idx0s, idx1s = np.unravel_index(np.argsort(cp_error_cube[:idx_comp_range], axis=None),
-                                                np.shape(cp_error_cube[:idx_comp_range]))
+        layers, idx0s, idx1s = np.unravel_index(
+            np.argsort(cp_error_cube[:idx_comp_range], axis=None),
+            np.shape(cp_error_cube[:idx_comp_range]),
+        )
 
-        i_non_nan = len(cp_error_cube[layers, idx0s, idx1s][~np.isnan(cp_error_cube[layers, idx0s, idx1s])])
+        i_non_nan = len(
+            cp_error_cube[layers, idx0s, idx1s][
+                ~np.isnan(cp_error_cube[layers, idx0s, idx1s])
+            ]
+        )
         min_i0 = np.min(np.hstack(i0_m))
         max_i1 = np.max(np.hstack(i1_m))
 
-        p_ident_v = ident_v[min_i0:max_i1 + 1] # this is a pointer: changes in p_ident_v changes also ident_v
-        p_tmp_ident_v = tmp_ident_v[min_i0:max_i1 + 1]
-        p_idx_v = idx_v[min_i0:max_i1 + 1]
-        p_fund_v = fund_v[min_i0:max_i1 + 1]
+        p_ident_v = ident_v[
+            min_i0 : max_i1 + 1
+        ]  # this is a pointer: changes in p_ident_v changes also ident_v
+        p_tmp_ident_v = tmp_ident_v[min_i0 : max_i1 + 1]
+        p_idx_v = idx_v[min_i0 : max_i1 + 1]
+        p_fund_v = fund_v[min_i0 : max_i1 + 1]
 
         p_i0_m = np.array(i0_m, dtype=object) - min_i0
         p_i1_m = np.array(i1_m, dtype=object) - min_i0
 
         already_assigned = []
-        for layer, idx0, idx1 in zip(layers[:i_non_nan], idx0s[:i_non_nan], idx1s[:i_non_nan]):
-            idents_to_assigne = p_ident_v[~np.isnan(p_tmp_ident_v) & (p_idx_v > start_idx + idx_comp_range) &
-                                          (p_idx_v <= start_idx + idx_comp_range * 2)]
+        for layer, idx0, idx1 in zip(
+            layers[:i_non_nan], idx0s[:i_non_nan], idx1s[:i_non_nan]
+        ):
+            idents_to_assigne = p_ident_v[
+                ~np.isnan(p_tmp_ident_v)
+                & (p_idx_v > start_idx + idx_comp_range)
+                & (p_idx_v <= start_idx + idx_comp_range * 2)
+            ]
 
             if len(idents_to_assigne[np.isnan(idents_to_assigne)]) == 0:
                 break
@@ -469,26 +630,41 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
                 continue
 
             if p_i1_m[layer][idx1] < idx_comp_range:
-                if p_i1_m[layer][idx1] >= idx_comp_range * 2.:
-                    print('impossible')
+                if p_i1_m[layer][idx1] >= idx_comp_range * 2.0:
+                    print("impossible")
                     embed()
                     quit()
                 continue
 
-            if p_fund_v[p_i0_m[layer][idx0]] > max_freq or p_fund_v[p_i0_m[layer][idx0]] < min_freq:
+            if (
+                p_fund_v[p_i0_m[layer][idx0]] > max_freq
+                or p_fund_v[p_i0_m[layer][idx0]] < min_freq
+            ):
                 continue
-            if p_fund_v[p_i1_m[layer][idx1]] > max_freq or p_fund_v[p_i1_m[layer][idx1]] < min_freq:
+            if (
+                p_fund_v[p_i1_m[layer][idx1]] > max_freq
+                or p_fund_v[p_i1_m[layer][idx1]] < min_freq
+            ):
                 continue
 
             if np.isnan(p_ident_v[p_i0_m[layer][idx0]]):
                 continue
 
-            idxs_i0 = p_idx_v[(p_ident_v == p_ident_v[p_i0_m[layer][idx0]]) & (p_idx_v > start_idx + idx_comp_range) &
-                              (p_idx_v <= start_idx + idx_comp_range * 2)]
-            idxs_i1 = p_idx_v[(p_tmp_ident_v == p_tmp_ident_v[p_i1_m[layer][idx1]]) & (np.isnan(p_ident_v)) &
-                              (p_idx_v > start_idx + idx_comp_range) & (p_idx_v <= start_idx + idx_comp_range * 2)]
+            idxs_i0 = p_idx_v[
+                (p_ident_v == p_ident_v[p_i0_m[layer][idx0]])
+                & (p_idx_v > start_idx + idx_comp_range)
+                & (p_idx_v <= start_idx + idx_comp_range * 2)
+            ]
+            idxs_i1 = p_idx_v[
+                (p_tmp_ident_v == p_tmp_ident_v[p_i1_m[layer][idx1]])
+                & (np.isnan(p_ident_v))
+                & (p_idx_v > start_idx + idx_comp_range)
+                & (p_idx_v <= start_idx + idx_comp_range * 2)
+            ]
 
-            if np.any(np.diff(sorted(np.concatenate((idxs_i0, idxs_i1)))) == 0):
+            if np.any(
+                np.diff(sorted(np.concatenate((idxs_i0, idxs_i1)))) == 0
+            ):
                 continue
 
             if p_i1_m[layer][idx1] in already_assigned:
@@ -496,38 +672,66 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
 
             already_assigned.append(p_i1_m[layer][idx1])
 
-            p_ident_v[(p_tmp_ident_v == p_tmp_ident_v[p_i1_m[layer][idx1]]) &
-                      (np.isnan(p_ident_v)) & (p_idx_v > start_idx + idx_comp_range) &
-                      (p_idx_v <= start_idx + idx_comp_range * 2)] = p_ident_v[p_i0_m[layer][idx0]]
+            p_ident_v[
+                (p_tmp_ident_v == p_tmp_ident_v[p_i1_m[layer][idx1]])
+                & (np.isnan(p_ident_v))
+                & (p_idx_v > start_idx + idx_comp_range)
+                & (p_idx_v <= start_idx + idx_comp_range * 2)
+            ] = p_ident_v[p_i0_m[layer][idx0]]
 
         for ident in np.unique(p_tmp_ident_v[~np.isnan(p_tmp_ident_v)]):
-            if len(p_ident_v[p_tmp_ident_v == ident][~np.isnan(p_ident_v[p_tmp_ident_v == ident])]) == 0:
-                p_ident_v[(p_tmp_ident_v == ident) & (p_idx_v > start_idx + idx_comp_range) & (
-                        p_idx_v <= start_idx + idx_comp_range * 2)] = next_identity
+            if (
+                len(
+                    p_ident_v[p_tmp_ident_v == ident][
+                        ~np.isnan(p_ident_v[p_tmp_ident_v == ident])
+                    ]
+                )
+                == 0
+            ):
+                p_ident_v[
+                    (p_tmp_ident_v == ident)
+                    & (p_idx_v > start_idx + idx_comp_range)
+                    & (p_idx_v <= start_idx + idx_comp_range * 2)
+                ] = next_identity
                 next_identity += 1
 
         return ident_v, next_identity
 
-
     channels = np.shape(sign_v)[1]
 
     detection_time_diff = times[1] - times[0]
-    dps = 1. / detection_time_diff
+    dps = 1.0 / detection_time_diff
     idx_comp_range = int(np.floor(dps * max_dt))
 
     ident_v = np.full(len(fund_v), np.nan)
 
-    norm_sign_v = (sign_v - np.min(sign_v, axis=1).reshape(len(sign_v), 1)) / (np.max(sign_v, axis=1).reshape(len(sign_v), 1) - np.min(sign_v, axis=1).reshape(len(sign_v), 1))
-
+    norm_sign_v = (sign_v - np.min(sign_v, axis=1).reshape(len(sign_v), 1)) / (
+        np.max(sign_v, axis=1).reshape(len(sign_v), 1)
+        - np.min(sign_v, axis=1).reshape(len(sign_v), 1)
+    )
 
     # start_idx = 0 if not ioi_fti else idx_v[ioi_fti]  # Index Of Interest for temporal identities
     abs_start_idx = np.min(idx_v)
     start_idx = np.min(idx_v)  # Index Of Interest for temporal identities
 
-    a_error_distribution = get_amplitude_error_dist(fund_v, idx_v, norm_sign_v, abs_start_idx, idx_comp_range, min_freq, max_freq)
+    a_error_distribution = get_amplitude_error_dist(
+        fund_v,
+        idx_v,
+        norm_sign_v,
+        abs_start_idx,
+        idx_comp_range,
+        min_freq,
+        max_freq,
+    )
 
-    error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(i0_m=None, i1_m=None, error_cube=None, min_freq=min_freq,
-                                                             max_freq=max_freq, cube_app_idx=None)
+    error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(
+        i0_m=None,
+        i1_m=None,
+        error_cube=None,
+        min_freq=min_freq,
+        max_freq=max_freq,
+        cube_app_idx=None,
+    )
 
     next_identity = 0
 
@@ -535,33 +739,79 @@ def freq_tracking_v6(fund_v, idx_v, sign_v, times, freq_tolerance=2.5, max_dt=10
     t0 = time.time()
     min_idx, max_idx = np.min(idx_v), np.max(idx_v)
     last_start_idx = min_idx
-    for start_idx in tqdm(np.arange(np.min(idx_v), np.max(idx_v)+1), desc='tracking'):
+    for start_idx in tqdm(
+        np.arange(np.min(idx_v), np.max(idx_v) + 1), desc="tracking"
+    ):
         if verbose == 3:
             if time.time() - t0 > 5:
-                print(f'{" ":^25}  Progress {(start_idx-min_idx) / (max_idx-min_idx):3.1%} '
-                      f'({start_idx-min_idx:.0f}/{max_idx-min_idx:.0f})'
-                      f'-> {start_idx-last_start_idx} itt/5s', end="\r")
-                t0=time.time()
+                print(
+                    f'{" ":^25}  Progress {(start_idx-min_idx) / (max_idx-min_idx):3.1%} '
+                    f'({start_idx-min_idx:.0f}/{max_idx-min_idx:.0f})'
+                    f'-> {start_idx-last_start_idx} itt/5s',
+                    end="\r",
+                )
+                t0 = time.time()
                 last_start_idx = start_idx
 
         if len(np.hstack(i0_m)) == 0 or len(np.hstack(i1_m)) == 0:
-            error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(i0_m, i1_m, error_cube, cube_app_idx, min_freq, max_freq, update=True)
+            error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(
+                i0_m,
+                i1_m,
+                error_cube,
+                cube_app_idx,
+                min_freq,
+                max_freq,
+                update=True,
+            )
             continue
 
-        if (abs_start_idx - start_idx) % idx_comp_range == 0:  # next total sorting step
-            tmp_ident_v, errors_to_v = get_tmp_identities(i0_m, i1_m, error_cube, fund_v, idx_v, start_idx, idx_comp_range)
+        if (
+            abs_start_idx - start_idx
+        ) % idx_comp_range == 0:  # next total sorting step
+            tmp_ident_v, errors_to_v = get_tmp_identities(
+                i0_m,
+                i1_m,
+                error_cube,
+                fund_v,
+                idx_v,
+                start_idx,
+                idx_comp_range,
+            )
 
-            if abs_start_idx - start_idx == 0: # initial assignment of tmp_identities
+            if (
+                abs_start_idx - start_idx == 0
+            ):  # initial assignment of tmp_identities
                 for ident in np.unique(tmp_ident_v[~np.isnan(tmp_ident_v)]):
-                    ident_v[(tmp_ident_v == ident) & (idx_v <= start_idx + idx_comp_range)] = next_identity
+                    ident_v[
+                        (tmp_ident_v == ident)
+                        & (idx_v <= start_idx + idx_comp_range)
+                    ] = next_identity
                     next_identity += 1
 
             # assing tmp identities ##################################
-            ident_v, next_identity = assign_tmp_ids(ident_v, tmp_ident_v, idx_v, fund_v, error_cube, idx_comp_range,
-                                                    next_identity, i0_m, i1_m, min_freq, max_freq)
+            ident_v, next_identity = assign_tmp_ids(
+                ident_v,
+                tmp_ident_v,
+                idx_v,
+                fund_v,
+                error_cube,
+                idx_comp_range,
+                next_identity,
+                i0_m,
+                i1_m,
+                min_freq,
+                max_freq,
+            )
 
-        error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(i0_m, i1_m, error_cube, cube_app_idx, min_freq, max_freq,
-                                                                 update=True)
+        error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(
+            i0_m,
+            i1_m,
+            error_cube,
+            cube_app_idx,
+            min_freq,
+            max_freq,
+            update=True,
+        )
         # start_idx += 1
 
     return ident_v
@@ -592,13 +842,19 @@ def estimate_error(a_error, f_error, a_error_distribution):
             a certain threshold.
 
     """
-    a_weight = 2. / 3
-    f_weight = 1. / 3
+    a_weight = 2.0 / 3
+    f_weight = 1.0 / 3
     if len(a_error_distribution) > 0:
-        rel_amplitude_error = a_weight * len(a_error_distribution[a_error_distribution < a_error]) / len(a_error_distribution)
+        rel_amplitude_error = (
+            a_weight
+            * len(a_error_distribution[a_error_distribution < a_error])
+            / len(a_error_distribution)
+        )
     else:
         rel_amplitude_error = 1
-    rel_frequency_error = f_weight * boltzmann(f_error, alpha=1, beta=0, x0=.35, dx=.08)
+    rel_frequency_error = f_weight * boltzmann(
+        f_error, alpha=1, beta=0, x0=0.35, dx=0.08
+    )
 
     return rel_amplitude_error, rel_frequency_error
 
@@ -625,9 +881,9 @@ def boltzmann(t, alpha=0.25, beta=0.0, x0=4, dx=0.85):
         boltz : ndarray
             Boltzmann function corresponding to input parameters.
     """
-
-    boltz = (alpha - beta) / (1. + np.exp(- (t - x0) / dx)) + beta
+    boltz = (alpha - beta) / (1.0 + np.exp(-(t - x0) / dx)) + beta
     return boltz
+
 
 def load_example_data(folder):
     """
@@ -654,31 +910,42 @@ def load_example_data(folder):
         end_time : float
             Endtime of the analyzed data (usually obsolet since whole recordings are analyzed).
     """
-
-    if os.path.exists(os.path.join(folder, 'fund_v.npy')):
-        fund_v = np.load(os.path.join(folder, 'fund_v.npy'))
-        sign_v = np.load(os.path.join(folder, 'sign_v.npy'))
-        idx_v = np.load(os.path.join(folder, 'idx_v.npy'))
-        times = np.load(os.path.join(folder, 'times.npy'))
-        start_time, end_time = np.load(os.path.join(folder, 'meta.npy'))
+    if os.path.exists(os.path.join(folder, "fund_v.npy")):
+        fund_v = np.load(os.path.join(folder, "fund_v.npy"))
+        sign_v = np.load(os.path.join(folder, "sign_v.npy"))
+        idx_v = np.load(os.path.join(folder, "idx_v.npy"))
+        times = np.load(os.path.join(folder, "times.npy"))
+        start_time, end_time = np.load(os.path.join(folder, "meta.npy"))
 
     else:
-        fund_v, sign_v, idx_v, times, start_time, end_time  = [], [], [], [], [], []
-        print('WARNING !!! files not found !')
+        fund_v, sign_v, idx_v, times, start_time, end_time = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
+        print("WARNING !!! files not found !")
 
     return fund_v, sign_v, idx_v, times, start_time, end_time
 
+
 def main():
     if len(sys.argv) <= 1:
-        print('require data suitable for tracking using the wavetracker apporoch. See fn "load_example_data".')
+        print(
+            'require data suitable for tracking using the wavetracker apporoch. See fn "load_example_data".'
+        )
     folder = sys.argv[1]
 
     # ---------------- Example data for tracking paper ---------------- #
-    fund_v, sign_v, idx_v, times, start_time, end_time, validated_ident_v = load_example_data(folder)
+    fund_v, sign_v, idx_v, times, start_time, end_time, validated_ident_v = (
+        load_example_data(folder)
+    )
     # ----------------------------------------------------------------- #
 
     ident_v = freq_tracking_v6(fund_v, idx_v, sign_v, times)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -19,9 +19,9 @@ harmonic_groups:
   low_threshold: 0
   high_threshold: 0
   low_thresh_factor: 6.0
-#  low_thresh_factor: 4.0
+  #  low_thresh_factor: 4.0
   high_thresh_factor: 10.0
-#  high_thresh_factor: 6.0
+  #  high_thresh_factor: 6.0
   freq_tol_fac: 1.
   max_freq_tol: 1.
   mains_freq: 50.
@@ -37,7 +37,3 @@ tracking:
   freq_tolerance: 2.5 # 2.5
   max_dt: 10 # 10
   min_fundamental_power: -100
-
-
-
-

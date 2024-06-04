@@ -1,0 +1,88 @@
+[tool.poetry]
+name = "wavetracker"
+version = "0.2.0"
+description = "Track the fundamental frequencies of weakly electric fish on electrode grid recordings of multiple fish."
+authors = [
+	"Till Raab",
+	"Joerg Henninger",
+	"Jan Benda <jan.benda@uni-tuebingen.de",
+	"Patrick Weygoldt <patrick.weygoldt@student.uni-tuebingen.de>",
+]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+thunderfish = {git = "https://github.com/janscience/thunderfish"}
+numpy = "^1.26.4"
+numba = "^0.59.1"
+cupy-cuda12x = "^13.1.0"
+matplotlib = "^3.9.0"
+pyqtgraph = "^0.13.7"
+scipy = "^1.13.1"
+tensorflow = {extras = ["and-cuda"], version = "^2.16.1"}
+tqdm = "^4.66.4"
+plottools = {git = "https://github.com/janscience/plottools"}
+ruamel-yaml = "^0.18.6"
+
+ipython = "^8.25.0"
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.7"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+EODsorter = "wavetracker.EODsorter:main"
+trackingGUI = "wavetracker.trackingGUI:main"
+wavetracker = "wavetracker.wavetracker:main"
+dataviewer = "wavetracker.dataviewer:main_UI"
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = [
+    "W", # pycodestyle
+    "E", # pycodestyle
+    "F", # Pyflakes
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "SIM", # flake8-simplify
+    "ANN", # flake8-annotations
+    "A", # flake8-builtins
+    "COM", # flake8-commas
+    "C4", # flake8-comprehensions
+    "EM", # flake8-error-msg
+    "EXE", # flake8-executable
+    "ICN", # flake8-import-conventions
+    "PT", # flake8-pytest-style
+    "Q", # flake8-quotes
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "PD", # pandas-vet
+    "PL", # pylint
+    "TRY", # tryceratops
+    "NPY", # numpy-specific
+    "I", # isort
+    "C90", # complexity (McCabe)
+    "N", # pep8-naming
+    "D", # pydocstyle
+]
+
+ignore = [
+    "COM812", # missing trailing comma
+    "TD002", # missing todo author
+    "TD003", # missing todo link
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
