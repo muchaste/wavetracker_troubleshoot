@@ -4,3 +4,4 @@ wavetracker.egg-info/*
 *.txt
 __pycache__
 tmp/*
+.python-version
