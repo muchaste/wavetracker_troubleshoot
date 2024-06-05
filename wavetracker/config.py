@@ -45,11 +45,9 @@ class Configuration:
         self.tracking = {}
 
         if self.verbose >= 1:
-            print(f'{"Config file from":^25}: {os.path.realpath(self.file)}.')
-        if logger:
-            logger.info(
-                f'{"Config file from":^25}: {os.path.realpath(self.file)}.'
-            )
+            # print(f'{"Config file from":^25}: {os.path.realpath(self.file)}.')
+            # if logger:
+            logger.info(f"Config file from: {os.path.realpath(self.file)}.")
 
         self.yaml = ruamel.yaml.YAML()
         with open(self.file) as f:

@@ -8,17 +8,42 @@ import warnings
 from functools import partial, partialmethod
 
 import numpy as np
+from rich.progress import Progress
 from thunderfish.harmonics import fundamental_freqs, harmonic_groups
-from tqdm import tqdm
 
-from .config import Configuration
-from .datahandler import open_raw_data
-from .gpu_harmonic_group import get_fundamentals, harmonic_group_pipeline
-from .spectrogram import Spectrogram
-from .tracking import freq_tracking_v6
+from wavetracker.config import Configuration
+from wavetracker.datahandler import open_raw_data
+from wavetracker.gpu_harmonic_group import (
+    get_fundamentals,
+    harmonic_group_pipeline,
+)
+from wavetracker.spectrogram import Spectrogram
+from wavetracker.tracking import freq_tracking_v6
+from wavetracker.logger import get_logger
 
 warnings.filterwarnings("ignore")
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+log = get_logger(__name__)
+
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
+
+# Define custom progress bar
+pbar = Progress(
+    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    BarColumn(),
+    MofNCompleteColumn(),
+    TextColumn("•"),
+    TimeElapsedColumn(),
+    TextColumn("•"),
+    TimeRemainingColumn(),
+)
 
 try:
     import tensorflow as tf
@@ -27,8 +52,16 @@ try:
     np_config.enable_numpy_behavior()
     if len(tf.config.list_physical_devices("GPU")):
         available_GPU = True
+        msg = "Tensorflow installed, running on GPU."
+        log.info(msg)
+    else:
+        available_GPU = False
+        msg = "Tensorflow installed, but no GPU available. Defaulting to CPU analysis."
+        log.warning(msg)
 except ImportError:
     available_GPU = False
+    msg = "Tensorflow not installed, defaulting to CPU analysis."
+    log.info(msg)
 
 
 class AnalysisPipeline:
@@ -115,6 +148,8 @@ class AnalysisPipeline:
 
         # load
         if os.path.exists(os.path.join(self.save_path, "fund_v.npy")):
+            msg = "Loading pre-analyzed data."
+            log.info(msg)
             self._fund_v = np.load(
                 os.path.join(self.save_path, "fund_v.npy"), allow_pickle=True
             )
@@ -134,11 +169,16 @@ class AnalysisPipeline:
             if len(self.ident_v[~np.isnan(self.ident_v)]) > 0:
                 self.do_tracking = False
         else:
+            msg = "No pre-analyzed data found."
+            log.info(msg)
             self._fund_v = []
             self._idx_v = []
             self._sign_v = []
             self.ident_v = []
             self.times = []
+
+        msg = "Analysis pipeline initialized."
+        log.info(msg)
 
     @property
     def get_signals(self):
@@ -192,22 +232,21 @@ class AnalysisPipeline:
         Different pathways for GPU assisted analysis and standard CPU analysis are available and executed depending on
         Hardware availability.
         """
-        if self.verbose >= 1:
-            print(
-                f'{"Spectrogram (GPU)":^25}: '
-                f'-- fine spec: {self.Spec.get_fine_spec} '
-                f'-- plotable spec: {self.Spec.get_sparse_spec} '
-                f'-- signal extract: {self._get_signals} '
-                f'-- snippet size: {self.Spec.snippet_size / self.samplerate:.2f}s'
-            )
-        if self.logger:
-            self.logger.info(
-                f'{"Spectrogram (GPU)":^25}: '
-                f'-- fine spec: {self.Spec.get_fine_spec} '
-                f'-- plotable spec: {self.Spec.get_sparse_spec} '
-                f'-- signal extract: {self._get_signals} '
-                f'-- snippet size: {self.Spec.snippet_size / self.samplerate:.2f}s'
-            )
+        # if self.verbose >= 1:
+        #     print(
+        #         f'{"Spectrogram (GPU)":^25}: '
+        #         f'-- fine spec: {self.Spec.get_fine_spec} '
+        #         f'-- plotable spec: {self.Spec.get_sparse_spec} '
+        #         f'-- signal extract: {self._get_signals} '
+        #         f'-- snippet size: {self.Spec.snippet_size / self.samplerate:.2f}s'
+        #     )
+        self.logger.info(
+            f"Spectrogram (GPU):\n"
+            f"-- fine spec: {self.Spec.get_fine_spec}\n"
+            f"-- plotable spec: {self.Spec.get_sparse_spec}\n"
+            f"-- signal extract: {self._get_signals}\n"
+            f"-- snippet size: {self.Spec.snippet_size / self.samplerate:.2f}s\n"
+        )
 
         if (
             self._get_signals
@@ -222,14 +261,10 @@ class AnalysisPipeline:
             self.save()
 
         if self.verbose >= 1:
-            print(
-                f'\n{"Tracking":^25}: -- freq_tolerance: {self.cfg.tracking["freq_tolerance"]} -- '
-                f'max_dt: {self.cfg.tracking["max_dt"]}'
-            )
-        if self.logger:
             self.logger.info(
-                f'{"Tracking":^25}: -- freq_tolerance: {self.cfg.tracking["freq_tolerance"]} -- '
-                f'max_dt: {self.cfg.tracking["max_dt"]}'
+                f"Tracking:\n"
+                f"-- freq_tolerance: {self.cfg.tracking['freq_tolerance']}\n"
+                f"-- max_dt: {self.cfg.tracking['max_dt']}\n"
             )
         if self.do_tracking:
             self.ident_v = freq_tracking_v6(
@@ -248,48 +283,47 @@ class AnalysisPipeline:
         Executes the analysis pipeline comprising spectrogram analysis and signal extracting using GPU.
         """
         iterations = int(np.floor(self.data_shape[0] / self.Spec.snippet_size))
-        pbar = tqdm(total=iterations)
 
         iter_counter = 0
 
-        for enu, snippet_data in enumerate(self.dataset):
-            t0_snip = time.time()
-            snippet_t0 = (
-                self.Spec.itter_count
-                * self.Spec.snippet_size
-                / self.samplerate
-            )
-            if (
-                self.data.shape[0] // self.Spec.snippet_size
-                == self.Spec.itter_count
-            ):
-                self.Spec.terminate = True
-
-            t0_spec = time.time()
-            self.Spec.snippet_spectrogram(
-                tf.transpose(snippet_data), snipptet_t0=snippet_t0
-            )
-            t1_spec = time.time()
-
-            t0_hg = time.time()
-            if self._get_signals:
-                self.extract_snippet_signals()
-            t1_hg = time.time()
-
-            iter_counter += 1
-            t1_snip = time.time()
-            if self.verbose == 3:
-                print(
-                    f'{" ":^25}  Progress {iter_counter / iterations:3.1%} '
-                    f'-- Spectrogram: {t1_spec - t0_spec:.2f}s '
-                    f'-- Harmonic group: {t1_hg - t0_hg:.2f}s '
-                    f'--> {t1_snip-t0_snip:.2f}s',
-                    end="\r",
+        with pbar:
+            task = pbar.add_task("File analysis.", total=iterations)
+            for enu, snippet_data in enumerate(self.dataset):
+                t0_snip = time.time()
+                snippet_t0 = (
+                    self.Spec.itter_count
+                    * self.Spec.snippet_size
+                    / self.samplerate
                 )
-            pbar.update(1)
-            if enu == iterations - 1:
-                break
-        pbar.close()
+                if (
+                    self.data.shape[0] // self.Spec.snippet_size
+                    == self.Spec.itter_count
+                ):
+                    self.Spec.terminate = True
+
+                t0_spec = time.time()
+                self.Spec.snippet_spectrogram(
+                    tf.transpose(snippet_data), snipptet_t0=snippet_t0
+                )
+                t1_spec = time.time()
+
+                t0_hg = time.time()
+                if self._get_signals:
+                    self.extract_snippet_signals()
+                t1_hg = time.time()
+
+                iter_counter += 1
+                t1_snip = time.time()
+                if self.verbose == 3:
+                    self.logger.info(
+                        f"Progress {iter_counter / iterations:3.1%}\n"
+                        f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
+                        f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
+                        f"--> {t1_snip-t0_snip:.2f}s\n",
+                    )
+                pbar.update(task, advance=1)
+                if enu == iterations - 1:
+                    break
 
     def pipeline_CPU(self):
         """
@@ -299,46 +333,48 @@ class AnalysisPipeline:
         iterations = self.data.shape[0] // (
             self.Spec.snippet_size - self.Spec.noverlap
         )
-        for i0 in tqdm(
-            np.arange(
+
+        with pbar:
+            task = pbar.add_task("File analysis.", total=iterations)
+            for i0 in np.arange(
                 0,
                 self.data.shape[0],
                 self.Spec.snippet_size - self.Spec.noverlap,
-            ),
-            desc="File analysis.",
-        ):
-            t0_snip = time.time()
-            snippet_t0 = i0 / self.samplerate
-
-            if (
-                self.data.shape[0]
-                // (self.Spec.snippet_size - self.Spec.noverlap)
-                * (self.Spec.snippet_size - self.Spec.noverlap)
-                == i0
             ):
-                self.Spec.terminate = True
+                t0_snip = time.time()
+                snippet_t0 = i0 / self.samplerate
 
-            t0_spec = time.time()
-            snippet_data = [
-                self.data[i0 : i0 + self.Spec.snippet_size, channel]
-                for channel in self.Spec.channel_list
-            ]
-            self.Spec.snippet_spectrogram(snippet_data, snipptet_t0=snippet_t0)
-            t1_spec = time.time()
+                if (
+                    self.data.shape[0]
+                    // (self.Spec.snippet_size - self.Spec.noverlap)
+                    * (self.Spec.snippet_size - self.Spec.noverlap)
+                    == i0
+                ):
+                    self.Spec.terminate = True
 
-            t0_hg = time.time()
-            self.extract_snippet_signals()
-            t1_hg = time.time()
-            t1_snip = time.time()
-            if self.verbose >= 3:
-                print(
-                    f'{" ":^25}  Progress {counter / iterations:3.1%} '
-                    f'-- Spectrogram: {t1_spec - t0_spec:.2f}s '
-                    f'-- Harmonic group: {t1_hg - t0_hg:.2f}s'
-                    f'--> {t1_snip-t0_snip:.2f}s',
-                    end="\r",
+                t0_spec = time.time()
+                snippet_data = [
+                    self.data[i0 : i0 + self.Spec.snippet_size, channel]
+                    for channel in self.Spec.channel_list
+                ]
+                self.Spec.snippet_spectrogram(
+                    snippet_data, snipptet_t0=snippet_t0
                 )
-            counter += 1
+                t1_spec = time.time()
+
+                t0_hg = time.time()
+                self.extract_snippet_signals()
+                t1_hg = time.time()
+                t1_snip = time.time()
+                if self.verbose == 3:
+                    self.logger.info(
+                        f"Progress {counter / iterations:3.1%}\n"
+                        f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
+                        f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
+                        f"--> {t1_snip-t0_snip:.2f}s\n",
+                    )
+                counter += 1
+                pbar.update(task, advance=1)
 
     def extract_snippet_signals(self):
         """
@@ -461,31 +497,7 @@ def main():
     args.file = os.path.abspath(args.file)
     folder = os.path.split(args.file)[0]
 
-    # feedback
-    logger = None
-    if args.logging:
-        logger = logging.getLogger(__name__)
-        logging.basicConfig(
-            filename=os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "log.log"
-            ),
-            format="%(asctime)s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-            level=20,
-            encoding="utf-8",
-        )
-    if logger:
-        logger.info("--- Running wavetracker.wavetracker ---")
-        logger.info(
-            f'{"Hardware used":^25}: {"GPU" if (~args.cpu and available_GPU) else "CPU"}'
-        )
-    if args.verbose >= 1:
-        print("\n--- Running wavetracker.wavetracker ---")
-        print(
-            f'{"Hardware used":^25}: {"GPU" if (~args.cpu and available_GPU) else "CPU"}'
-        )
-    if args.verbose != 2:
-        tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+    logger = log
 
     # load wavetracker configuration
     cfg = Configuration(args.config, verbose=args.verbose, logger=logger)
@@ -511,12 +523,14 @@ def main():
         logger=logger,
         gpu_use=not args.cpu and available_GPU,
     )
+
     if args.renew:
         (
             Analysis.Spec.get_sparse_spec,
             Analysis.Spec.get_fine_spec,
             Analysis.get_signals,
         ) = True, True, True
+
     if args.nosave:
         Analysis.Spec.get_sparse_spec, Analysis.Spec.get_fine_spec = (
             False,
@@ -524,6 +538,7 @@ def main():
         )
 
     Analysis.run()
+
     sys.stdout.close()
 
 

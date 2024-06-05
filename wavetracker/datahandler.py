@@ -21,6 +21,8 @@ try:
     np_config.enable_numpy_behavior()
     if len(tf.config.list_physical_devices("GPU")):
         available_GPU = True
+    else:
+        available_GPU = False
 except ImportError:
     available_GPU = False
 
@@ -110,9 +112,12 @@ def open_raw_data(
     """
     folder = os.path.split(filename)[0]
     # filename = os.path.join(folder, 'traces-grid1.raw')
-    print(filename)
+    # print(filename)
     data = DataLoader(
-        filename, buffersize=buffersize, backsize=backsize, channel=channel
+        filename,
+        buffersize=buffersize,
+        backsize=backsize,
+        # channel=channel,
     )
     samplerate = data.samplerate
     channels = data.channels
@@ -124,13 +129,13 @@ def open_raw_data(
         else "(NO gpu: NO TensorGenerator created)"
     )
     if verbose >= 1:
-        print(
-            f'{"Loading data from":^25}: {os.path.abspath(folder)}\n{" "*27 + GPU_str}'
-        )
-    if logger:
-        logger.info(f'{"Loading data from":^25}: {os.path.abspath(folder)}')
-    if logger:
-        logger.info(f'{" "*27 + GPU_str}')
+        # print(
+        #     f'{"Loading data from":^25}: {os.path.abspath(folder)}\n{" "*27 + GPU_str}'
+        # )
+        # if logger:
+        logger.info(f"Loading data from: {os.path.abspath(folder)}")
+        # if logger:
+        logger.info(f"{GPU_str}")
     dataset = None
     if available_GPU:
         dataset = tf.data.Dataset.from_generator(
@@ -144,8 +149,8 @@ def open_raw_data(
 
 
 def main(args):
-    if args.verbose >= 1:
-        print("\n--- Running wavetracker.datahandler ---")
+    # if args.verbose >= 1:
+    # print("\n--- Running wavetracker.datahandler ---")
 
     cfg = Configuration(args.config, verbose=args.verbose)
 
