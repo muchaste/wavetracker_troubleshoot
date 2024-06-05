@@ -63,7 +63,14 @@ from .config import Configuration
 
 ####################################################################
 # 1)
-@cuda.jit("void(f4[:,:], f4[:,:])")
+
+# NOTE: It appears that new versions of numba raise an error when
+# the C types of the function inputs of the decorator are specified.
+# I think they switched to the previous "autojit" by default (not sure though)
+
+
+# @cuda.jit("void(f4[:,:], f4[:,:])")
+@cuda.jit
 def jit_decibel(power, db_power):
     """Transform power to decibel relative to ref_power.
 
@@ -98,7 +105,8 @@ def jit_decibel(power, db_power):
     cuda.syncthreads()
 
 
-@cuda.jit(device=True)
+# @cuda.jit(device=True)
+@cuda.jit
 def threshold_estimate(log_spec, log_spec_detrend, hist, bins):
     n = len(log_spec)
     i0, i1 = n // 2, n * 3 // 4
@@ -172,9 +180,10 @@ def threshold_estimate_coordinator(
 
 ####################################################################
 # 2)
-@cuda.jit(
-    "void(f4[:], f4[:], f4[:], f8[:], f8, f8, f8, f8, f8, f8, f8)", device=True
-)
+# @cuda.jit(
+#     "void(f4[:], f4[:], f4[:], f8[:], f8, f8, f8, f8, f8, f8, f8)", device=True
+# )
+@cuda.jit
 def detect_peaks_fixed(
     data,
     peaks,
@@ -299,7 +308,8 @@ def detect_peaks_fixed(
         pass
 
 
-@cuda.jit("void(f4[:,:], f4[:,:], f4[:,:], f8[:], f8, f8, f8, f8, f8, f8, f8)")
+# @cuda.jit("void(f4[:,:], f4[:,:], f4[:,:], f8[:], f8, f8, f8, f8, f8, f8, f8)")
+@cuda.jit
 def peak_detect_coordinater(
     spec,
     peaks,
@@ -332,7 +342,8 @@ def peak_detect_coordinater(
     cuda.syncthreads()
 
 
-@cuda.jit("f8(f8, f4[:], f8[:], f4[:], i8[:], i8, f8, f8, f8)", device=True)
+# @cuda.jit("f8(f8, f4[:], f8[:], f4[:], i8[:], i8, f8, f8, f8)", device=True)
+@cuda.jit
 def get_group(
     freq,
     log_spec,
@@ -386,9 +397,10 @@ def get_group(
     return value
 
 
-@cuda.jit(
-    "void(f8[:,:], f4[:,:], f8[:], f4[:, :], i8[:,:,:], f8[:, :], i8, f8, f8, f8)"
-)
+# @cuda.jit(
+#     "void(f8[:,:], f4[:,:], f8[:], f4[:, :], i8[:,:,:], f8[:, :], i8, f8, f8, f8)"
+# )
+@cuda.jit
 def get_harmonic_groups_coordinator(
     g_check_freqs,
     g_log_spec,

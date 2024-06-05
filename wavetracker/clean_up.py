@@ -5,7 +5,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
-from thunderfish.powerspectrum import decibel
+from thunderlab.powerspectrum import decibel
 from tqdm import tqdm
 
 illustrate_cleanup = True

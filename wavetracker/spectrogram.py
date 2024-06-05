@@ -5,7 +5,7 @@ from functools import partial, partialmethod
 
 import numpy as np
 from matplotlib.mlab import specgram as mspecgram
-from thunderfish.powerspectrum import get_window
+from thunderlab.powerspectrum import get_window
 from tqdm import tqdm
 
 from .config import Configuration
