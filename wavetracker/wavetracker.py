@@ -241,7 +241,7 @@ class AnalysisPipeline:
         #         f'-- snippet size: {self.Spec.snippet_size / self.samplerate:.2f}s'
         #     )
         self.logger.info(
-            f"Spectrogram (GPU):\n"
+            f"Spectrogram:\n"
             f"-- fine spec: {self.Spec.get_fine_spec}\n"
             f"-- plotable spec: {self.Spec.get_sparse_spec}\n"
             f"-- signal extract: {self._get_signals}\n"
