@@ -7,57 +7,89 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import torch
 
 # from .spectrogram import *
 from PyQt5.QtWidgets import *
 from thunderlab.dataloader import DataLoader
 
 from .config import Configuration
+from wavetracker.device_check import get_device
 
-try:
-    import tensorflow as tf
-    from tensorflow.python.ops.numpy_ops import np_config
+device = get_device()
+available_GPU = False if device.type == "cpu" else True
 
-    np_config.enable_numpy_behavior()
-    if len(tf.config.list_physical_devices("GPU")):
-        available_GPU = True
-    else:
-        available_GPU = False
-except ImportError:
-    available_GPU = False
+# try:
+#     import tensorflow as tf
+#     from tensorflow.python.ops.numpy_ops import np_config
+#
+#     np_config.enable_numpy_behavior()
+#     if len(tf.config.list_physical_devices("GPU")):
+#         available_GPU = True
+#     else:
+#         available_GPU = False
+# except ImportError:
+#     available_GPU = False
 
 
-def multi_channel_audio_file_generator(
-    filename: str, channels: int, data_snippet_idxs: int
-):
-    # TODO: Make this work with overlapping snippets (last and first FFT do not
-    # overlap)
-    """
+# def multi_channel_audio_file_generator(
+#     filename: str, channels: int, data_snippet_idxs: int
+# ):
+#     # TODO: Make this work with overlapping snippets (last and first FFT do not
+#     # overlap)
+#     """
+#
+#     Parameters
+#     ----------
+#         filename : str
+#             Path to the file that shall be analyzed.
+#         channels : int
+#             Channel count of the data to be analysed.
+#         data_snippet_idxs : int
+#
+#     """
+#     with tf.io.gfile.GFile(filename, "rb") as f:
+#         while True:
+#             chunk = f.read(
+#                 data_snippet_idxs * channels * 4
+#             )  # 4 bytes per float32 value
+#             if chunk:
+#                 chunk = tf.io.decode_raw(
+#                     chunk,
+#                     tf.float32,
+#                     fixed_length=data_snippet_idxs * channels * 4,
+#                 )
+#                 chunk = chunk.reshape([-1, channels])
+#                 yield chunk
+#             else:
+#                 break
 
-    Parameters
-    ----------
-        filename : str
-            Path to the file that shall be analyzed.
-        channels : int
-            Channel count of the data to be analysed.
-        data_snippet_idxs : int
 
-    """
-    with tf.io.gfile.GFile(filename, "rb") as f:
-        while True:
-            chunk = f.read(
-                data_snippet_idxs * channels * 4
-            )  # 4 bytes per float32 value
-            if chunk:
-                chunk = tf.io.decode_raw(
-                    chunk,
-                    tf.float32,
-                    fixed_length=data_snippet_idxs * channels * 4,
-                )
-                chunk = chunk.reshape([-1, channels])
-                yield chunk
-            else:
-                break
+class MultiChannelAudioDataset(torch.utils.data.IterableDataset):
+    """Iterator for loading data from a multi-channel audio file."""
+
+    def __init__(
+        self, data_loader: DataLoader, block_size: int, noverlap: int = 0
+    ) -> None:
+        """Initialize the iterator for loading data from a multi-channel audio.
+
+        Parameters
+        ----------
+        audio_loader : aio.AudioLoader
+            An instance of the AudioLoader class for loading audio data.
+        block_size : int
+            The size of each data block to be loaded.
+        noverlap : int, optional
+            Number of overlapping samples between blocks, by default 0.
+        """
+        self.data_loader = data_loader
+        self.block_size = block_size
+        self.noverlap = noverlap
+
+    def __iter__(self):
+        with self.data_loader as data:
+            for block in data.blocks(self.block_size, self.noverlap):
+                yield torch.from_numpy(block)
 
 
 def open_raw_data(
@@ -110,7 +142,12 @@ def open_raw_data(
             Shape of data.
 
     """
-    folder = os.path.split(filename)[0]
+
+    if isinstance(filename, str):
+        folder = os.path.split(filename)[0]
+    else:
+        folder = os.path.split(filename[0])[0]
+
     # filename = os.path.join(folder, 'traces-grid1.raw')
     # print(filename)
     data = DataLoader(
@@ -119,31 +156,24 @@ def open_raw_data(
         backsize=backsize,
         # channel=channel,
     )
-    samplerate = data.samplerate
+    samplerate = data.rate
     channels = data.channels
     shape = data.shape
 
-    GPU_str = (
-        "(gpu found: TensorGenerator created)"
-        if available_GPU
-        else "(NO gpu: NO TensorGenerator created)"
-    )
     if verbose >= 1:
-        # print(
-        #     f'{"Loading data from":^25}: {os.path.abspath(folder)}\n{" "*27 + GPU_str}'
-        # )
-        # if logger:
         logger.info(f"Loading data from: {os.path.abspath(folder)}")
-        # if logger:
-        logger.info(f"{GPU_str}")
     dataset = None
     if available_GPU:
-        dataset = tf.data.Dataset.from_generator(
-            multi_channel_audio_file_generator,
-            args=(filename, channels, snippet_size),
-            output_types=tf.float32,
-            output_shapes=tf.TensorShape([None, channels]),
+        # dataset = tf.data.Dataset.from_generator(
+        #     multi_channel_audio_file_generator,
+        #     args=(filename, channels, snippet_size),
+        #     output_types=tf.float32,
+        #     output_shapes=tf.TensorShape([None, channels]),
+        # )
+        dataset = MultiChannelAudioDataset(
+            data_loader=data, block_size=snippet_size, noverlap=0
         )
+        logger.info("Torch iterator loaded")
 
     return data, samplerate, channels, dataset, shape
 

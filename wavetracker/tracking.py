@@ -4,6 +4,7 @@ colors_params(colors_muted, colors_tableau)
 import os
 import sys
 import time
+import numpy as np
 
 from IPython import embed
 from PyQt5.QtCore import *

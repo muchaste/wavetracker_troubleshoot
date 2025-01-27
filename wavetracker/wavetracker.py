@@ -6,11 +6,12 @@ import sys
 import time
 import warnings
 from functools import partial, partialmethod
-
+from pathlib import Path
 import numpy as np
 from rich.progress import Progress
 from thunderfish.harmonics import fundamental_freqs, harmonic_groups
 
+import torch
 from wavetracker.config import Configuration
 from wavetracker.datahandler import open_raw_data
 from wavetracker.gpu_harmonic_group import (
@@ -20,6 +21,7 @@ from wavetracker.gpu_harmonic_group import (
 from wavetracker.spectrogram import Spectrogram
 from wavetracker.tracking import freq_tracking_v6
 from wavetracker.logger import get_logger
+from wavetracker.device_check import get_device
 
 warnings.filterwarnings("ignore")
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -45,23 +47,26 @@ pbar = Progress(
     TimeRemainingColumn(),
 )
 
-try:
-    import tensorflow as tf
-    from tensorflow.python.ops.numpy_ops import np_config
+device = get_device()
+available_GPU = False if device.type == "cpu" else True
 
-    np_config.enable_numpy_behavior()
-    if len(tf.config.list_physical_devices("GPU")):
-        available_GPU = True
-        msg = "Tensorflow installed, running on GPU."
-        log.info(msg)
-    else:
-        available_GPU = False
-        msg = "Tensorflow installed, but no GPU available. Defaulting to CPU analysis."
-        log.warning(msg)
-except ImportError:
-    available_GPU = False
-    msg = "Tensorflow not installed, defaulting to CPU analysis."
-    log.info(msg)
+# try:
+#     import tensorflow as tf
+#     from tensorflow.python.ops.numpy_ops import np_config
+#
+#     np_config.enable_numpy_behavior()
+#     if len(tf.config.list_physical_devices("GPU")):
+#         available_GPU = True
+#         msg = "Tensorflow installed, running on GPU."
+#         log.info(msg)
+#     else:
+#         available_GPU = False
+#         msg = "Tensorflow installed, but no GPU available. Defaulting to CPU analysis."
+#         log.warning(msg)
+# except ImportError:
+#     available_GPU = False
+#     msg = "Tensorflow not installed, defaulting to CPU analysis."
+#     log.info(msg)
 
 
 class AnalysisPipeline:
@@ -303,7 +308,7 @@ class AnalysisPipeline:
 
                 t0_spec = time.time()
                 self.Spec.snippet_spectrogram(
-                    tf.transpose(snippet_data), snipptet_t0=snippet_t0
+                    snippet_data.T, snipptet_t0=snippet_t0
                 )
                 t1_spec = time.time()
 
@@ -457,7 +462,10 @@ def main():
         description="Evaluated electrode array recordings with multiple fish."
     )
     parser.add_argument(
-        "file", nargs="?", type=str, help="file to be analyzed"
+        "path",
+        nargs="?",
+        type=Path,
+        help="Path to directory of recording or to file to be analyzed",
     )
     parser.add_argument(
         "-c",
@@ -494,8 +502,14 @@ def main():
     )
     args = parser.parse_args()
 
-    args.file = os.path.abspath(args.file)
-    folder = os.path.split(args.file)[0]
+    file, folder = None, None
+    if args.path.is_dir():
+        file = sorted(list(args.path.glob("*.wav")))
+        folder = str(args.path)
+        file = [str(x.absolute()) for x in file]
+    else:
+        file = str(args.path.absolute())
+        folder = str(args.path.absolute().parent)
 
     logger = log
 
@@ -504,7 +518,7 @@ def main():
 
     # load data
     data, samplerate, channels, dataset, data_shape = open_raw_data(
-        filename=args.file,
+        filename=file,
         verbose=args.verbose,
         logger=logger,
         **cfg.spectrogram,

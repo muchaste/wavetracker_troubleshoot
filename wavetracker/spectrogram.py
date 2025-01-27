@@ -2,26 +2,34 @@ import argparse
 import multiprocessing
 import os
 from functools import partial, partialmethod
+import torch
+import numpy as np
+from scipy.signal.windows import hann
 
 import numpy as np
 from matplotlib.mlab import specgram as mspecgram
+import matplotlib.pyplot as plt
 from thunderlab.powerspectrum import get_window
 from tqdm import tqdm
 
 from .config import Configuration
 from .datahandler import open_raw_data
+from wavetracker.device_check import get_device
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-try:
-    import tensorflow as tf
-    from tensorflow.python.ops.numpy_ops import np_config
+device = get_device()
+available_GPU = False if device.type == "cpu" else True
 
-    np_config.enable_numpy_behavior()
-    if len(tf.config.list_physical_devices("GPU")):
-        available_GPU = True
-except:
-    available_GPU = False
+# try:
+#     import tensorflow as tf
+#     from tensorflow.python.ops.numpy_ops import np_config
+#
+#     np_config.enable_numpy_behavior()
+#     if len(tf.config.list_physical_devices("GPU")):
+#         available_GPU = True
+# except:
+#     available_GPU = False
 
 
 def get_step_and_overlap(overlap_frac, nfft, **kwargs):
@@ -49,15 +57,94 @@ def get_step_and_overlap(overlap_frac, nfft, **kwargs):
     return step, noverlap
 
 
-def tensorflow_spec(data, samplerate, nfft, step, **kwargs):
+# def tensorflow_spec(data, samplerate, nfft, step, **kwargs):
+#     """
+#     Computes a soectrogram for a datasnippet with n samples recorded on m channels. The function is based on the
+#     tensorflow package and optimized for GPU use.
+#
+#     Parameters
+#     ----------
+#         data : 2d-array, 2d-tensor
+#             Contains a snippet of raw-data from electrode (grid) recordings of electric fish. Data shape resembles
+#             samples (1st dimension) x channels (2nd dimension).
+#         samplerate : int
+#             Samplerate of the data.
+#         nfft : int
+#             Samples in one nfft window.
+#         step : int
+#             Samples by which consecutive nfft windows are shifted by.
+#         kwargs : dict
+#             Excess parameters from the configuration dictionary passed to the function.
+#
+#     Returns
+#     -------
+#         ret_spectra : 2d-tensor
+#             Spectrogram computed for the given data.
+#         freqs : 1d-array
+#             Frequency array corresponding to the 2nd dimension of the computed spectrogram.
+#         times : 1d-array
+#             Time array corresponding to the 1st dimension of the computed spectrogram.
+#     """
+#
+#     def conversion_to_old_scale(tf_spectrogram):
+#         """
+#         Scales the spectrogram computed using the tensporflow functionality to match the scale of the old way decribed
+#         in the function mlab_spec().
+#
+#         Parameters
+#         ----------
+#             tf_spectrogram : 2d-tenspr
+#                 Spectrogram
+#
+#         Returns
+#         -------
+#             scaled_spectrogram : 2d-tensor
+#                 Scales spectrogram that matches the the range if spectrograms returned by mlab_spec
+#
+#         """
+#         # TODO: kill this whole approch and write all spectrogram anaylsis in pytorch (CPU and GPU functionality).
+#         scaled_spectrogram = (
+#             tf_spectrogram**2 * 4.05e-9
+#         )  # TODO: The result might change with different nfft and samplerate
+#         # so this needs to be rewritten to be more general. Do this in line 103
+#         return scaled_spectrogram
+#
+#     # Run the computation on the GPU
+#     with tf.device("GPU:0"):
+#         # Compute the spectrogram using a short-time Fourier transform
+#         stft = tf.signal.stft(
+#             data,
+#             frame_length=nfft,
+#             frame_step=step,
+#             window_fn=tf.signal.hann_window,
+#         )
+#         spectra = tf.abs(stft)
+#     ret_spectra = conversion_to_old_scale(spectra)
+#
+#     # create frequency and time axis returned with the spectrogram
+#     freqs = np.fft.fftfreq(nfft, 1 / samplerate)[
+#         : int(nfft / 2) + 1
+#     ]  # TODO: Check how this compares to my way
+#     freqs[-1] = samplerate / 2
+#     times = np.linspace(
+#         0,
+#         int(tf.shape(data)[1]) / samplerate,
+#         int(spectra.shape[1]),
+#         endpoint=False,
+#     )
+#
+#     return ret_spectra, freqs, times
+
+
+def pytorch_spec(data, samplerate, nfft, step, **kwargs):
     """
-    Computes a soectrogram for a datasnippet with n samples recorded on m channels. The function is based on the
-    tensorflow package and optimized for GPU use.
+    Computes a spectrogram for a data snippet with n samples recorded on m channels. The function is based on PyTorch
+    and optimized for GPU use.
 
     Parameters
     ----------
         data : 2d-array, 2d-tensor
-            Contains a snippet of raw-data from electrode (grid) recordings of electric fish. Data shape resembles
+            Contains a snippet of raw data from electrode (grid) recordings of electric fish. Data shape resembles
             samples (1st dimension) x channels (2nd dimension).
         samplerate : int
             Samplerate of the data.
@@ -78,50 +165,56 @@ def tensorflow_spec(data, samplerate, nfft, step, **kwargs):
             Time array corresponding to the 1st dimension of the computed spectrogram.
     """
 
-    def conversion_to_old_scale(tf_spectrogram):
+    def conversion_to_old_scale(torch_spectrogram):
         """
-        Scales the spectrogram computed using the tensporflow functionality to match the scale of the old way decribed
+        Scales the spectrogram computed using the PyTorch functionality to match the scale of the old way described
         in the function mlab_spec().
 
         Parameters
         ----------
-            tf_spectrogram : 2d-tenspr
+            torch_spectrogram : 2d-tensor
                 Spectrogram
 
         Returns
         -------
             scaled_spectrogram : 2d-tensor
-                Scales spectrogram that matches the the range if spectrograms returned by mlab_spec
+                Scaled spectrogram that matches the range of spectrograms returned by mlab_spec.
 
         """
-        # TODO: kill this whole approch and write all spectrogram anaylsis in pytorch (CPU and GPU functionality).
         scaled_spectrogram = (
-            tf_spectrogram**2 * 4.05e-9
+            torch_spectrogram**2 * 4.05e-9
         )  # TODO: The result might change with different nfft and samplerate
-        # so this needs to be rewritten to be more general. Do this in line 103
         return scaled_spectrogram
 
-    # Run the computation on the GPU
-    with tf.device("GPU:0"):
-        # Compute the spectrogram using a short-time Fourier transform
-        stft = tf.signal.stft(
-            data,
-            frame_length=nfft,
-            frame_step=step,
-            window_fn=tf.signal.hann_window,
-        )
-        spectra = tf.abs(stft)
+    # Convert data to PyTorch tensor and move to GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data = torch.tensor(data, dtype=torch.float32, device=device)
+
+    # Create Hann window
+    window = torch.tensor(hann(nfft), dtype=torch.float32, device=device)
+
+    # Compute the short-time Fourier transform (STFT)
+    stft = torch.stft(
+        data,
+        n_fft=nfft,
+        hop_length=step,
+        win_length=nfft,
+        window=window,
+        return_complex=True,
+    )
+
+    # Compute magnitude of the STFT
+    spectra = torch.abs(stft)
+
+    # Apply scaling
     ret_spectra = conversion_to_old_scale(spectra)
 
-    # create frequency and time axis returned with the spectrogram
-    freqs = np.fft.fftfreq(nfft, 1 / samplerate)[
-        : int(nfft / 2) + 1
-    ]  # TODO: Check how this compares to my way
-    freqs[-1] = samplerate / 2
+    # Create frequency and time axes
+    freqs = np.fft.rfftfreq(nfft, 1 / samplerate)
     times = np.linspace(
         0,
-        int(tf.shape(data)[1]) / samplerate,
-        int(spectra.shape[1]),
+        data.shape[0] / samplerate,
+        ret_spectra.shape[-1],
         endpoint=False,
     )
 
@@ -451,18 +544,39 @@ class Spectrogram:
                 Timeponit of the first datapoint in the data snippet in respect to the whole recording analized.
         """
         if self.gpu:
-            self.spec, self.spec_freqs, spec_times = tensorflow_spec(
+            self.spec, self.spec_freqs, spec_times = pytorch_spec(
                 data_snippet,
                 samplerate=self.samplerate,
                 step=self.step,
                 nfft=self.nfft,
                 **self.kwargs,
             )
-            self.spec = np.swapaxes(
-                self.spec, 1, 2
-            )  # TODO: Keep spec in gpu memory and swap axes there
-            self.sum_spec = np.sum(self.spec, axis=0)
+
+            # self.spec = np.swapaxes(
+            #     self.spec, 1, 2
+            # )  # TODO: Keep spec in gpu memory and swap axes there
+            # self.sum_spec = np.sum(self.spec, axis=0)
+
+            # self.spec = self.spec.permute(0, 2, 1)
+            # self.spec = self.spec.T
+
+            self.sum_spec = self.spec.sum(dim=0)
+            self.sum_spec = self.sum_spec.cpu().numpy()
+            self.spec = self.spec.cpu().numpy()
+
+            # fig, ax = plt.subplots(1, 1)
+            # ax.pcolormesh(
+            #     spec_times,
+            #     self.spec_freqs,
+            #     self.sum_spec.cpu().numpy(),
+            #     cmap="jet",
+            #     shading="auto",
+            # )
+            # plt.show()
+            # exit()
+
             self.itter_count += 1
+
         else:
             self.step, self.noverlap = get_step_and_overlap(
                 self._overlap_frac, self.nfft
@@ -483,6 +597,17 @@ class Spectrogram:
             pool.terminate()
             # self.spec_times = spec_times + (i0 / self.samplerate)
             self.sum_spec = np.sum(self.spec, axis=0)
+            # fig, ax = plt.subplots(1, 1)
+            # ax.pcolormesh(
+            #     spec_times,
+            #     self.spec_freqs,
+            #     self.sum_spec,
+            #     cmap="jet",
+            #     shading="auto",
+            # )
+            # plt.show()
+            self.spec = self.spec.cpu().numpy()
+            self.sum_spec = self.sum_spec.cpu().numpy()
 
         self.spec_times = spec_times + snipptet_t0
         self.times = np.concatenate((self.times, self.spec_times))
@@ -507,7 +632,6 @@ class Spectrogram:
         time and frequency segment the maximum value of the corresponding spectral powers in the summed up spectrogram
         of the corresponding snippet is extracted and assigned to the corresponding index in the sparse spectrogram
         matrix. Accordingly, this matrix is filled while analysing a whole recording file.
-
         """
         f1 = np.argmax(self.spec_freqs > self.max_freq)
         plot_freqs = self.spec_freqs[:f1]
@@ -579,6 +703,7 @@ class Spectrogram:
                 ]
                 if len(t_mask) == 0 or len(f_mask) == 0:
                     continue
+
                 self.sparse_spectra[i, j] = np.max(
                     plot_spectra[f_mask[:, None], t_mask]
                 )
