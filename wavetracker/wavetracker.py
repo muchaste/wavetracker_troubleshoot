@@ -34,7 +34,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-# Define custom progress bar
+# Custom progress bar
 pbar = Progress(
     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
     BarColumn(),
