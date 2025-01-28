@@ -303,9 +303,9 @@ class AnalysisPipeline:
                 t0_snip = time.time()
                 snippet_t0 = (
                     self.Spec.itter_count
-                    * (self.Spec.snippet_size + self.Spec.snippet_overlap // 2)
+                    * self.Spec.snippet_size
                     / self.samplerate
-                )
+                ) + self.Spec.snippet_overlap // 2 * self.samplerate
 
                 if (
                     self.data.shape[0] // self.Spec.snippet_size

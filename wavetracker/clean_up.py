@@ -2,6 +2,8 @@ import itertools
 import os
 import sys
 
+from pathlib import Path
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
@@ -46,6 +48,9 @@ def get_valid_ids_by_freq_dist(
     window_t_mask = (times[idx_v] >= i0) & (times[idx_v] < i0 + stride)
 
     ff = fund_v[(~np.isnan(ident_v)) & (window_t_mask)]
+
+    if len(ff) == 0:
+        return None, old_valid_ids
 
     # ToDo: min_freq & max_freq + buffer (.cfg)
     convolve_f = np.arange(400, 1200, 0.1)
@@ -130,6 +135,9 @@ def get_valid_ids_by_freq_dist(
 def connect_by_similarity(
     times, idx_v, ident_v, fund_v, sign_v, valid_v, valid_ids, f_th, i0, stride
 ):
+    if len(valid_ids) == 0:
+        return valid_ids, ident_v
+
     window_t_mask = (times[idx_v] >= i0) & (times[idx_v] < i0 + stride)
 
     d_med_f = np.abs(valid_ids[:, 1] - valid_ids[:, 1][:, np.newaxis])
@@ -877,8 +885,20 @@ def main(folder=None):
     ###################################################
 
 
+def cli():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "path",
+        nargs="?",
+        type=Path,
+        help="Path to directory of recording or to file to be analyzed",
+    )
+    args = parser.parse_args()
+    main(args.path)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) >= 2:
+    if len(sys.argv) >= 0:
         main(sys.argv[1])
     else:
         main()

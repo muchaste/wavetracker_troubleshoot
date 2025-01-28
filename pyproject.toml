@@ -22,6 +22,7 @@ EODsorter = "wavetracker.EODsorter:main"
 trackingGUI = "wavetracker.trackingGUI:main"
 wavetracker = "wavetracker.wavetracker:main"
 dataviewer = "wavetracker.dataviewer:main_UI"
+cleanup = "wavetracker.clean_up:cli"
 
 [tool.ruff]
 line-length = 79
