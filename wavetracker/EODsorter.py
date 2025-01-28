@@ -1783,9 +1783,9 @@ class MainWindow(QMainWindow):
     def undo(self):
         if hasattr(self.last_ident_v, "__len__"):
             if self.cb_SCH_MCH.currentIndex() == 0:
-                self.all_ident_v[self.cb_channel.currentIndex()] = (
-                    self.last_ident_v
-                )
+                self.all_ident_v[
+                    self.cb_channel.currentIndex()
+                ] = self.last_ident_v
                 self.ident_v = self.all_ident_v[self.cb_channel.currentIndex()]
             elif self.cb_SCH_MCH.currentIndex() == 1:
                 self.ident_v = self.last_ident_v

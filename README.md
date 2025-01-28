@@ -156,23 +156,23 @@ plt.show()
 ```py
 import numpy as np
 import matplotlib.pyplot as plt
-from thunderfish.powerspectrum import decibel
+from thunderlab.powerspectrum import decibel
 
-fill_freqs = np.load('fill_freqs.npy', allow_pickle=True)
-fill_times = np.load('fill_times.npy', allow_pickle=True)
-fill_spec_shape = np.load('fill_spec_shape.npy', allow_pickle=True)
-fill_spec = np.memmap('fill_spec.npy', dtype='float', mode='r', 
+fill_freqs = np.load('fine_freqs.npy', allow_pickle=True)
+fill_times = np.load('fine_times.npy', allow_pickle=True)
+fill_spec_shape = np.load('fine_spec_shape.npy', allow_pickle=True)
+fill_spec = np.memmap('fine_spec.npy', dtype='float', mode='r', 
                       shape=(fill_spec_shape[0], fill_spec_shape[1]), order = 'F')
 
-f0, f1 = 400, 420 # frequency limitation
-t0, t1 = 100, 200 # time limitation
+f0, f1 = 0, 1200 # frequency limitation
+t0, t1 = 0, 600 # time limitation
 
 f_mask = np.arange(len(fill_freqs))[(fill_freqs >= f0) & (fill_freqs <= f1)]
 t_mask = np.arange(len(fill_times))[(fill_times >= t0) & (fill_times <= t1)]
 
 fig, ax = plt.subplots()
 ax.imshow(decibel(fill_spec[f_mask[0]:f_mask[-1], t_mask[0]:t_mask[-1]][::-1]), 
-          extent=[t0, t1, f0, f1], aspect='auto', vmin = -100, vmax = -50, alpha=0.7, 
-          cmap='jet', interpolation='gaussian')
+          extent=[t0, t1, f0, f1], aspect='auto', 
+          cmap='viridis', interpolation='none')
 plt.show()
 ```

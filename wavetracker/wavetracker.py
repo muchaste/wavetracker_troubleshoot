@@ -1,30 +1,30 @@
 import argparse
-import logging
 import multiprocessing
 import os
 import sys
 import time
-import warnings
-from functools import partial, partialmethod
+from functools import partial
 from pathlib import Path
+
 import numpy as np
 from rich.progress import Progress
 from thunderfish.harmonics import fundamental_freqs, harmonic_groups
 
-import torch
 from wavetracker.config import Configuration
-from wavetracker.datahandler import open_raw_data
+from wavetracker.datahandler import open_raw_data, MultiChannelAudioDataset
+from wavetracker.device_check import get_device
 from wavetracker.gpu_harmonic_group import (
     get_fundamentals,
     harmonic_group_pipeline,
 )
-from wavetracker.spectrogram import Spectrogram
-from wavetracker.tracking import freq_tracking_v6
 from wavetracker.logger import get_logger
-from wavetracker.device_check import get_device
+from wavetracker.spectrogram import (
+    Spectrogram,
+    compute_aligned_snippet_length,
+    get_step_and_overlap,
+)
+from wavetracker.tracking import freq_tracking_v6
 
-warnings.filterwarnings("ignore")
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 log = get_logger(__name__)
 
 from rich.progress import (
@@ -50,6 +50,8 @@ pbar = Progress(
 device = get_device()
 available_GPU = False if device.type == "cpu" else True
 
+# warnings.filterwarnings("ignore")
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 # try:
 #     import tensorflow as tf
 #     from tensorflow.python.ops.numpy_ops import np_config
@@ -86,7 +88,9 @@ class AnalysisPipeline:
         data_shape,
         cfg,
         folder,
+        save_path,
         verbose,
+        spec,
         logger=None,
         gpu_use=False,
     ):
@@ -120,10 +124,7 @@ class AnalysisPipeline:
             gpu_use : bool, optional
                 If True uses the way faster GPU analysis pipeline (default in False).
         """
-        folder = os.path.abspath(folder)
-        save_path = list(folder.split(os.sep))
-        save_path.insert(-2, "derived_data")
-        self.save_path = os.sep.join(save_path)
+        self.save_path = save_path
 
         self.data = data
         self.samplerate = samplerate
@@ -138,15 +139,16 @@ class AnalysisPipeline:
         self.gpu_use = gpu_use
         self.core_count = multiprocessing.cpu_count()
 
-        self.Spec = Spectrogram(
-            self.samplerate,
-            self.data_shape,
-            folder=self.folder,
-            verbose=verbose,
-            gpu_use=gpu_use,
-            **cfg.raw,
-            **cfg.spectrogram,
-        )
+        self.Spec = spec
+        # self.Spec = Spectrogram(
+        #     self.samplerate,
+        #     self.data_shape,
+        #     folder=self.folder,
+        #     verbose=verbose,
+        #     gpu_use=gpu_use,
+        #     **cfg.raw,
+        #     **cfg.spectrogram,
+        # )
 
         self._get_signals = True
         self.do_tracking = True
@@ -253,6 +255,8 @@ class AnalysisPipeline:
             f"-- snippet size: {self.Spec.snippet_size / self.samplerate:.2f}s\n"
         )
 
+        self.logger.info(f"GPU use : {self.gpu_use}\n")
+
         if (
             self._get_signals
             or self.Spec.get_fine_spec
@@ -292,14 +296,17 @@ class AnalysisPipeline:
         iter_counter = 0
 
         with pbar:
-            task = pbar.add_task("File analysis.", total=iterations)
+            task = pbar.add_task(
+                "Spectrogram + Harmonic Group", total=iterations
+            )
             for enu, snippet_data in enumerate(self.dataset):
                 t0_snip = time.time()
                 snippet_t0 = (
                     self.Spec.itter_count
-                    * self.Spec.snippet_size
+                    * (self.Spec.snippet_size + self.Spec.snippet_overlap // 2)
                     / self.samplerate
                 )
+
                 if (
                     self.data.shape[0] // self.Spec.snippet_size
                     == self.Spec.itter_count
@@ -457,7 +464,8 @@ class AnalysisPipeline:
         self.Spec.save()
 
 
-def main():
+def cli() -> argparse.Namespace:
+    """Command line interface for wavetracker."""
     parser = argparse.ArgumentParser(
         description="Evaluated electrode array recordings with multiple fish."
     )
@@ -501,57 +509,110 @@ def main():
         "-n", "--nosave", action="store_true", help="dont save spectrograms"
     )
     args = parser.parse_args()
+    return args
 
+
+def main():
+    args = cli()
+
+    # STEP 0: Check if dataset is single file or directory of many .wav files
     file, folder = None, None
     if args.path.is_dir():
-        file = sorted(list(args.path.glob("*.wav")))
-        folder = str(args.path)
+        file = sorted(args.path.glob("*.wav"))
+        folder = args.path
         file = [str(x.absolute()) for x in file]
     else:
         file = str(args.path.absolute())
-        folder = str(args.path.absolute().parent)
+        folder = args.path.absolute().parent
 
-    logger = log
+    save_path = list(folder.parts)
+    save_path[-3] = "intermediate"
+    save_path = Path(*save_path)
+    save_path.mkdir(exist_ok=True, parents=True)
+    save_path = str(save_path)
+    folder = str(folder)
 
-    # load wavetracker configuration
-    cfg = Configuration(args.config, verbose=args.verbose, logger=logger)
+    # STEP 1: Load wavetracker configuration
+    cfg = Configuration(args.config, verbose=args.verbose, logger=log)
 
-    # load data
-    data, samplerate, channels, dataset, data_shape = open_raw_data(
+    # STEP 2: Load the raw data
+    data, samplerate, channels, data_shape = open_raw_data(
         filename=file,
         verbose=args.verbose,
-        logger=logger,
+        logger=log,
         **cfg.spectrogram,
     )
 
-    # initialize analysis pipeline class
-    Analysis = AnalysisPipeline(
-        data,
-        samplerate,
-        channels,
-        dataset,
-        data_shape,
-        cfg,
-        folder,
-        args.verbose,
-        logger=logger,
+    # STEP 3: Set the snippet size in accordance with the spectrogram parameters
+    usable_snippet_length = int(cfg.spectrogram["snippet_size"] * samplerate)
+    snippet_overlap = int(
+        cfg.spectrogram["snippet_overlap_frac"] * usable_snippet_length
+    )
+    total_snippet_length = usable_snippet_length + snippet_overlap
+
+    step, overlap = get_step_and_overlap(
+        overlap_frac=cfg.spectrogram["overlap_frac"],
+        nfft=cfg.spectrogram["nfft"],
+    )
+
+    better_snippet_size_samples = compute_aligned_snippet_length(
+        total_snippet_length, step, overlap
+    )
+
+    # STEP 4: Generate the torch iterator dataset object
+    # Just a better way to iterate through the dataset for spectrogram analysis
+    dataset = MultiChannelAudioDataset(
+        data_loader=data,
+        block_size=better_snippet_size_samples,
+        noverlap=snippet_overlap,  # This is NOT the noverlap of the spectrogram!
+    )
+
+    # STEP 5: Generate the Spectrogram object
+    spec = Spectrogram(
+        samplerate=samplerate,
+        snippet_size=better_snippet_size_samples,
+        snippet_overlap=snippet_overlap,
+        data_shape=data_shape,
+        nfft=cfg.spectrogram["nfft"],
+        step=step,
+        noverlap=overlap,
+        channels=channels,
+        verbose=args.verbose,
+        folder=save_path,
+        overlap_frac=cfg.spectrogram["overlap_frac"],
+    )
+
+    # STEP 6: Initialize analysis pipeline class
+    analysis = AnalysisPipeline(
+        data=data,
+        samplerate=samplerate,
+        channels=channels,
+        dataset=dataset,
+        data_shape=data_shape,
+        cfg=cfg,
+        folder=folder,
+        save_path=save_path,
+        verbose=args.verbose,
+        logger=log,
         gpu_use=not args.cpu and available_GPU,
+        spec=spec,
     )
 
     if args.renew:
         (
-            Analysis.Spec.get_sparse_spec,
-            Analysis.Spec.get_fine_spec,
-            Analysis.get_signals,
+            analysis.Spec.get_sparse_spec,
+            analysis.Spec.get_fine_spec,
+            analysis.get_signals,
         ) = True, True, True
 
     if args.nosave:
-        Analysis.Spec.get_sparse_spec, Analysis.Spec.get_fine_spec = (
+        analysis.Spec.get_sparse_spec, analysis.Spec.get_fine_spec = (
             False,
             False,
         )
 
-    Analysis.run()
+    # STEP 7: Run the analysis
+    analysis.run()
 
     sys.stdout.close()
 

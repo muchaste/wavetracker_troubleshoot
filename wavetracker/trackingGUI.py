@@ -13,12 +13,10 @@ from matplotlib.backends.backend_qt5agg import (
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from signal_tracker import freq_tracking_v5
-
+from thunderfish.harmonics import fundamental_freqs, harmonic_groups
 from thunderlab.dataloader import DataLoader as open_data
 from thunderlab.dataloader import fishgrid_grids, fishgrid_spacings
 from thunderlab.powerspectrum import decibel, next_power_of_two, spectrogram
-
-from thunderfish.harmonics import fundamental_freqs, harmonic_groups
 
 
 class SettingsHarmonicGroup(QMainWindow):

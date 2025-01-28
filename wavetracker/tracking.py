@@ -4,8 +4,8 @@ colors_params(colors_muted, colors_tableau)
 import os
 import sys
 import time
-import numpy as np
 
+import numpy as np
 from IPython import embed
 from PyQt5.QtCore import *
 from tqdm import tqdm
@@ -499,9 +499,9 @@ def freq_tracking_v6(
                 ):
                     continue
 
-                tmp_ident_v[tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]] = (
-                    tmp_ident_v[i1_m[layer][idx1]]
-                )
+                tmp_ident_v[
+                    tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]
+                ] = tmp_ident_v[i1_m[layer][idx1]]
 
                 if np.isnan(errors_to_v[i1_m[layer][idx1]]):
                     errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][
@@ -940,9 +940,15 @@ def main():
     folder = sys.argv[1]
 
     # ---------------- Example data for tracking paper ---------------- #
-    fund_v, sign_v, idx_v, times, start_time, end_time, validated_ident_v = (
-        load_example_data(folder)
-    )
+    (
+        fund_v,
+        sign_v,
+        idx_v,
+        times,
+        start_time,
+        end_time,
+        validated_ident_v,
+    ) = load_example_data(folder)
     # ----------------------------------------------------------------- #
 
     ident_v = freq_tracking_v6(fund_v, idx_v, sign_v, times)

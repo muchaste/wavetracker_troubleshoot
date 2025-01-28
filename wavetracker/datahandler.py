@@ -1,24 +1,25 @@
-import os
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import argparse
+from typing import Union
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-import torch
 
 # from .spectrogram import *
 from PyQt5.QtWidgets import *
 from thunderlab.dataloader import DataLoader
 
-from .config import Configuration
 from wavetracker.device_check import get_device
+
+from .config import Configuration
 
 device = get_device()
 available_GPU = False if device.type == "cpu" else True
 
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 # try:
 #     import tensorflow as tf
 #     from tensorflow.python.ops.numpy_ops import np_config
@@ -89,11 +90,11 @@ class MultiChannelAudioDataset(torch.utils.data.IterableDataset):
     def __iter__(self):
         with self.data_loader as data:
             for block in data.blocks(self.block_size, self.noverlap):
-                yield torch.from_numpy(block)
+                yield torch.from_numpy(block).to(device)
 
 
 def open_raw_data(
-    filename: str,
+    filename: Union[str, list],
     buffersize: float = 60.0,
     backsize: float = 0.0,
     channel: int = -1,
@@ -135,14 +136,10 @@ def open_raw_data(
             Samplerate of the data that shall be analyzed.
         channels : int
             Channel count of the data to be analysed.
-        dataset : 2d-tensor
-            Contains the same values as data, but is presented as data from generator, that is efficiently used by
-            tensorflow in the current GPU analysis pipeline.
         shape : tuple
             Shape of data.
 
     """
-
     if isinstance(filename, str):
         folder = os.path.split(filename)[0]
     else:
@@ -162,20 +159,8 @@ def open_raw_data(
 
     if verbose >= 1:
         logger.info(f"Loading data from: {os.path.abspath(folder)}")
-    dataset = None
-    if available_GPU:
-        # dataset = tf.data.Dataset.from_generator(
-        #     multi_channel_audio_file_generator,
-        #     args=(filename, channels, snippet_size),
-        #     output_types=tf.float32,
-        #     output_shapes=tf.TensorShape([None, channels]),
-        # )
-        dataset = MultiChannelAudioDataset(
-            data_loader=data, block_size=snippet_size, noverlap=0
-        )
-        logger.info("Torch iterator loaded")
 
-    return data, samplerate, channels, dataset, shape
+    return data, samplerate, channels, shape
 
 
 def main(args):

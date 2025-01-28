@@ -139,12 +139,12 @@ def create_standard_cfg_file(folder="."):
     basic:
       project: wavetracker
       version: 0.1
-    
+
     # Data processing configuration
     data_processing:
       snippet_size: 2**21
       channels: -1
-    
+
     # add another comment
     spectrogram:
       snippet: 2**21

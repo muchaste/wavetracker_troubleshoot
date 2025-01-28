@@ -2,25 +2,24 @@ import argparse
 import multiprocessing
 import os
 from functools import partial, partialmethod
-import torch
-import numpy as np
-from scipy.signal.windows import hann
 
-import numpy as np
-from matplotlib.mlab import specgram as mspecgram
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from matplotlib.mlab import specgram as mspecgram
+from scipy.signal.windows import hann
 from thunderlab.powerspectrum import get_window
 from tqdm import tqdm
 
-from .config import Configuration
-from .datahandler import open_raw_data
 from wavetracker.device_check import get_device
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+from .config import Configuration
+from .datahandler import open_raw_data
 
 device = get_device()
 available_GPU = False if device.type == "cpu" else True
 
+# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 # try:
 #     import tensorflow as tf
 #     from tensorflow.python.ops.numpy_ops import np_config
@@ -30,6 +29,13 @@ available_GPU = False if device.type == "cpu" else True
 #         available_GPU = True
 # except:
 #     available_GPU = False
+
+
+def compute_aligned_snippet_length(desired_length, nfft, step):
+    """Compute the closest snippet length that is a multiple of step"""
+    k = (desired_length - (nfft - step)) // step
+    aligned_length = k * step + (nfft - step)
+    return aligned_length
 
 
 def get_step_and_overlap(overlap_frac, nfft, **kwargs):
@@ -136,10 +142,11 @@ def get_step_and_overlap(overlap_frac, nfft, **kwargs):
 #     return ret_spectra, freqs, times
 
 
-def pytorch_spec(data, samplerate, nfft, step, **kwargs):
+def pytorch_spec(data, data_overlap, samplerate, nfft, step, **kwargs):
     """
-    Computes a spectrogram for a data snippet with n samples recorded on m channels. The function is based on PyTorch
-    and optimized for GPU use.
+    Computes a spectrogram for a data snippet with n samples recorded on m channels, including edge tapering
+    to mitigate artifacts at the start and end of each chunk. The tapering is dynamically adjusted based on
+    spectrogram parameters to ensure consistent artifact reduction.
 
     Parameters
     ----------
@@ -183,15 +190,11 @@ def pytorch_spec(data, samplerate, nfft, step, **kwargs):
         """
         scaled_spectrogram = (
             torch_spectrogram**2 * 4.05e-9
-        )  # TODO: The result might change with different nfft and samplerate
+        )  # Adjust based on calibration
         return scaled_spectrogram
 
-    # Convert data to PyTorch tensor and move to GPU if available
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data = torch.tensor(data, dtype=torch.float32, device=device)
-
-    # Create Hann window
-    window = torch.tensor(hann(nfft), dtype=torch.float32, device=device)
+    # Create Hann window for STFT
+    stft_window = torch.tensor(hann(nfft), dtype=torch.float32, device=device)
 
     # Compute the short-time Fourier transform (STFT)
     stft = torch.stft(
@@ -199,12 +202,19 @@ def pytorch_spec(data, samplerate, nfft, step, **kwargs):
         n_fft=nfft,
         hop_length=step,
         win_length=nfft,
-        window=window,
+        window=stft_window,
         return_complex=True,
     )
 
     # Compute magnitude of the STFT
     spectra = torch.abs(stft)
+
+    # Truncate the spectrogram to remove overlaps
+    if data_overlap > 0:
+        overlap_frames = data_overlap // step  # overlap from samples to STFT
+        start_frame = overlap_frames // 2
+        end_frame = spectra.shape[-1] - (overlap_frames - overlap_frames // 2)
+        spectra = spectra[:, :, start_frame:end_frame]
 
     # Apply scaling
     ret_spectra = conversion_to_old_scale(spectra)
@@ -213,10 +223,24 @@ def pytorch_spec(data, samplerate, nfft, step, **kwargs):
     freqs = np.fft.rfftfreq(nfft, 1 / samplerate)
     times = np.linspace(
         0,
-        data.shape[0] / samplerate,
+        data.shape[-1] / samplerate,
         ret_spectra.shape[-1],
         endpoint=False,
     )
+
+    # fig, ax = plt.subplots()
+    # from torchaudio.transforms import AmplitudeToDB
+    #
+    # transform = AmplitudeToDB()
+    # pltspec = torch.sum(ret_spectra, dim=0)
+    # pltspec = transform(pltspec)
+    # ax.pcolormesh(
+    #     times,
+    #     freqs,
+    #     pltspec.cpu().detach().numpy(),
+    #     cmap="viridis",
+    # )
+    # plt.show()
 
     return ret_spectra, freqs, times
 
@@ -297,12 +321,14 @@ class Spectrogram:
         samplerate,
         data_shape,
         snippet_size,
+        snippet_overlap,
         nfft,
         overlap_frac,
+        step,
+        noverlap,
         channels,
-        gpu_use,
+        folder,
         verbose=0,
-        folder=None,
         core_count=None,
         **kwargs,
     ):
@@ -328,8 +354,6 @@ class Spectrogram:
                 Overlap (samples) of fft-windows.
             channels : int
                 Channel count for the data the shall be analized
-            gpu_use : bool
-                If GPU is available chooses a different and faster analysis pathway.
             verbose : int
                 Verbosity level regulating shell/logging feedback during analysis. Suggested for debugging in
                 development.
@@ -341,27 +365,23 @@ class Spectrogram:
             kwargs : dict
                 Excess parameters from the configuration dictionary passed to the function.
         """
-        # meta parameters
-        if folder != None:
-            save_path = list(folder.split(os.sep))
-            save_path.insert(-2, "derived_data")
-            self.save_path = os.sep.join(save_path)
 
+        self.save_path = folder
         self.verbose = verbose
         self.kwargs = kwargs
-        self.gpu = gpu_use
+        self.gpu = True
 
         # spectrogram parameters
         self.snippet_size = snippet_size
+        self.snippet_overlap = snippet_overlap
         self.nfft = nfft
         self._overlap_frac = overlap_frac
         self.channels = data_shape[1] if channels == -1 else channels
         self.channel_list = np.arange(self.channels)
         self.samplerate = samplerate
         self.data_shape = data_shape
-        self.step, self.noverlap = get_step_and_overlap(
-            self._overlap_frac, self.nfft
-        )
+        self.step = step
+        self.noverlap = noverlap
 
         self.core_count = (
             multiprocessing.cpu_count() if not core_count else core_count
@@ -545,36 +565,17 @@ class Spectrogram:
         """
         if self.gpu:
             self.spec, self.spec_freqs, spec_times = pytorch_spec(
-                data_snippet,
+                data=data_snippet,
+                data_overlap=self.snippet_overlap,
                 samplerate=self.samplerate,
                 step=self.step,
                 nfft=self.nfft,
                 **self.kwargs,
             )
 
-            # self.spec = np.swapaxes(
-            #     self.spec, 1, 2
-            # )  # TODO: Keep spec in gpu memory and swap axes there
-            # self.sum_spec = np.sum(self.spec, axis=0)
-
-            # self.spec = self.spec.permute(0, 2, 1)
-            # self.spec = self.spec.T
-
             self.sum_spec = self.spec.sum(dim=0)
             self.sum_spec = self.sum_spec.cpu().numpy()
             self.spec = self.spec.cpu().numpy()
-
-            # fig, ax = plt.subplots(1, 1)
-            # ax.pcolormesh(
-            #     spec_times,
-            #     self.spec_freqs,
-            #     self.sum_spec.cpu().numpy(),
-            #     cmap="jet",
-            #     shading="auto",
-            # )
-            # plt.show()
-            # exit()
-
             self.itter_count += 1
 
         else:
@@ -606,11 +607,23 @@ class Spectrogram:
             #     shading="auto",
             # )
             # plt.show()
-            self.spec = self.spec.cpu().numpy()
-            self.sum_spec = self.sum_spec.cpu().numpy()
 
         self.spec_times = spec_times + snipptet_t0
         self.times = np.concatenate((self.times, self.spec_times))
+
+        # fig, ax = plt.subplots(figsize=(35 / 2.54, 25 / 2.54))
+        # from torchaudio.transforms import AmplitudeToDB
+        #
+        # transform = AmplitudeToDB()
+        # ax.pcolormesh(
+        #     self.spec_times,
+        #     self.spec_freqs,
+        #     transform(torch.tensor(self.sum_spec.copy())).numpy(),
+        #     cmap="viridis",
+        #     shading="auto",
+        # )
+        # ax.set_ylim(0, 2000)
+        # plt.show()
 
         if self._get_sparse_spec:
             self.create_plotable_spec()
