@@ -77,10 +77,9 @@ ids = np.unique(ident_v[~np.isnan(ident_v)])
 fig, ax = plt.subplots()
 for fish_id in ids:
     # Plot EOD frequency over time for each fish
-    ax.plot(times[idx_v[ident_v == fish_id]], 
-            fund_v[ident_v == fish_id], 
-            marker='.', 
-            label=f'Fish {int(fish_id)}')
+    t = times[idx_v[ident_v == fish_id]]
+    f = fund_v[ident_v == fish_id]
+    ax.plot(t, f, marker='.', label=f'Fish {int(fish_id)}')
 
 ax.set_xlabel('Time [s]')
 ax.set_ylabel('Frequency [Hz]')
@@ -105,23 +104,23 @@ from thunderlab.powerspectrum import decibel
 fine_freqs = np.load('fine_freqs.npy', allow_pickle=True)
 fine_times = np.load('fine_times.npy', allow_pickle=True)
 fine_spec_shape = np.load('fine_spec_shape.npy', allow_pickle=True)
-fine_spec = np.memmap('fine_spec.npy', dtype='float', mode='r', shape=fine_spec_shape)
+fine_spec = np.memmap('fine_spec.npy', dtype='float', mode='r', shape=(fine_spec_shape[0], fine_spec_shape[1]), order="F")
 
 # Set frequency and time limits for visualization
 f0, f1 = 0, 1200   # frequency range [Hz]
 t0, t1 = 0, 60 * 20  # time range [s] (20 minutes)
 
 # Create frequency and time masks to slice the spectrogram
-f_mask = np.where((fine_freqs >= f0) & (fine_freqs <= f1))[0]
-t_mask = np.where((fine_times >= t0) & (fine_times <= t1))[0]
+f_mask = np.arange(len(fine_freqs))[(fine_freqs >= f0) & (fine_freqs <= f1)]
+t_mask = np.arange(len(fine_times))[(fine_times >= t0) & (fine_times <= t1)]
 
 # Prepare the subset of the spectrogram for plotting
-spec_subset = fine_spec[f_mask[0]:f_mask[-1]+1, t_mask[0]:t_mask[-1]+1]
+spec_subset = decibel(fine_spec[f_mask[0]:f_mask[-1], t_mask[0]:t_mask[-1]][::-1])
 
 # Plot the decibel-transformed spectrogram
 fig, ax = plt.subplots()
 im = ax.imshow(
-    decibel(spec_subset[::-1]),  # flip vertically for conventional freq axis
+    spec_subset,
     extent=[t0, t1, f0, f1],
     aspect='auto',
     cmap='viridis',
