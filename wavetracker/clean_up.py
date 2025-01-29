@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib import gridspec
 from thunderlab.powerspectrum import decibel
 from tqdm import tqdm
+from rich.progress import Progress
 
 illustrate_cleanup = True
 

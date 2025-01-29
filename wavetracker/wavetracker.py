@@ -1,3 +1,5 @@
+import torch
+import gc
 import argparse
 import multiprocessing
 import os
@@ -287,6 +289,9 @@ class AnalysisPipeline:
             )
             self.save()
 
+        msg = "Analysis pipeline completed."
+        log.info(msg)
+
     def pipeline_GPU(self):
         """
         Executes the analysis pipeline comprising spectrogram analysis and signal extracting using GPU.
@@ -512,18 +517,24 @@ def cli() -> argparse.Namespace:
     return args
 
 
-def main():
-    args = cli()
-
+def wavetracker(
+    path,
+    config=None,
+    verbose=0,
+    cpu=False,
+    renew=False,
+    logging=False,
+    nosave=False,
+):
     # STEP 0: Check if dataset is single file or directory of many .wav files
     file, folder = None, None
-    if args.path.is_dir():
-        file = sorted(args.path.glob("*.wav"))
-        folder = args.path
+    if path.is_dir():
+        file = sorted(path.glob("*.wav"))
+        folder = path
         file = [str(x.absolute()) for x in file]
     else:
-        file = str(args.path.absolute())
-        folder = args.path.absolute().parent
+        file = str(path.absolute())
+        folder = path.absolute().parent
 
     save_path = list(folder.parts)
     save_path[-3] = "intermediate"
@@ -533,12 +544,12 @@ def main():
     folder = str(folder)
 
     # STEP 1: Load wavetracker configuration
-    cfg = Configuration(args.config, verbose=args.verbose, logger=log)
+    cfg = Configuration(config, verbose=verbose, logger=log)
 
     # STEP 2: Load the raw data
     data, samplerate, channels, data_shape = open_raw_data(
         filename=file,
-        verbose=args.verbose,
+        verbose=verbose,
         logger=log,
         **cfg.spectrogram,
     )
@@ -577,7 +588,7 @@ def main():
         step=step,
         noverlap=overlap,
         channels=channels,
-        verbose=args.verbose,
+        verbose=verbose,
         folder=save_path,
         overlap_frac=cfg.spectrogram["overlap_frac"],
     )
@@ -592,20 +603,20 @@ def main():
         cfg=cfg,
         folder=folder,
         save_path=save_path,
-        verbose=args.verbose,
+        verbose=verbose,
         logger=log,
-        gpu_use=not args.cpu and available_GPU,
+        gpu_use=not cpu and available_GPU,
         spec=spec,
     )
 
-    if args.renew:
+    if renew:
         (
             analysis.Spec.get_sparse_spec,
             analysis.Spec.get_fine_spec,
             analysis.get_signals,
         ) = True, True, True
 
-    if args.nosave:
+    if nosave:
         analysis.Spec.get_sparse_spec, analysis.Spec.get_fine_spec = (
             False,
             False,
@@ -614,7 +625,21 @@ def main():
     # STEP 7: Run the analysis
     analysis.run()
 
-    sys.stdout.close()
+    # sys.stdout.close()
+    # torch.cuda.empty_cache()
+
+
+def main():
+    args = cli()
+    wavetracker(
+        path=args.path,
+        config=args.config,
+        verbose=args.verbose,
+        cpu=args.cpu,
+        renew=args.renew,
+        logging=args.logging,
+        nosave=args.nosave,
+    )
 
 
 if __name__ == "__main__":
