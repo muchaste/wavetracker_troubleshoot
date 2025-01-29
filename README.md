@@ -1,9 +1,12 @@
 # Wavetracker
 
+[![Published Paper](https://img.shields.io/badge/Published%20in-Frontiers%20in%20Integrative%20Neuroscience-blue?style=for-the-badge)](https://www.frontiersin.org/articles/10.3389/fnint.2022.965211/full)
+
 A collection of algorithms for analyzing electrode-array recordings of
 wave-type electric fish. These algorithms detect individual fish, track their
 signals over time, and perform post-processing to eliminate and correct
-tracking errors. 
+tracking errors. For a detailed explanation and usage, see the
+[paper](https://www.frontiersin.org/articles/10.3389/fnint.2022.965211/full).
 
 **Terminology Note**:  
 - *Wave-type electric fish* produce continuous, quasi-sinusoidal electric organ discharges (EODs).  
