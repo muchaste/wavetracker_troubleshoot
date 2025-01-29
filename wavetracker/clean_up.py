@@ -720,20 +720,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
     return valid_v
 
 
-def main(folder=None):
-    # load data
-    if not folder:
-        if os.path.exists("/home/raab/data/cleanup_test/2023-03-02-09_54"):
-            folder = "/home/raab/data/cleanup_test/2023-03-02-09_54"
-        elif os.path.exists("/home/raab/data/2023-03-02-09_54"):
-            folder = "/home/raab/data/2023-03-02-09_54"
-        elif os.path.exists(
-            "/home/weygoldt/Projects/wavetracker/tmp/2023-03-02-09_54"
-        ):
-            folder = "/home/weygoldt/Projects/wavetracker/tmp/2023-03-02-09_54"
-        else:
-            print("no file found.")
-            exit()
+def main(folder):
     fund_v = np.load(os.path.join(folder, "fund_v.npy"))
     idx_v = np.load(os.path.join(folder, "idx_v.npy"))
     ident_v = np.load(os.path.join(folder, "ident_v.npy"))
@@ -750,6 +737,7 @@ def main(folder=None):
     f_th = 2.5
     kde_th = None
     previous_valid_ids = np.array([])
+    n_fish = 2
 
     for i0 in track(
         np.arange(0, times[-1], int(stride * (1 - overlap))),
@@ -835,6 +823,30 @@ def main(folder=None):
 
     ident_v = connect_with_overlap(fund_v, ident_v, valid_v, idx_v, times)
 
+    # Take only the best n_fish
+
+    # count lenght of each track
+    counts = []
+    idents = np.unique(ident_v[~np.isnan(ident_v)])
+    for fish_id in idents:
+        counts.append(np.sum([ident_v == fish_id]))
+    sorter = np.argsort(counts)
+    counts = np.array(counts)[sorter]
+    idents = idents[sorter]
+
+    # print(counts)
+    # print(idents)
+    valid_idents = idents[-n_fish:]
+    # print(valid_idents)
+    # print(np.unique(valid_v))
+
+    valid_v = np.zeros_like(ident_v)
+    for valid in valid_idents:
+        valid_v[ident_v == valid] = 1
+
+    # set all values in ident_v that are not in valid_idents to nan
+    ident_v[~np.isin(ident_v, valid_idents)] = np.nan
+
     ################### illustation ###################
     if illustrate_cleanup:
         fig = plt.figure(figsize=(30 / 2.54, 18 / 2.54))
@@ -882,6 +894,12 @@ def main(folder=None):
         ax[0].set_title("original")
         plt.show()
     ###################################################
+
+    # save data
+    np.save(os.path.join(folder, "ident_v.npy"), ident_v)
+    # np.save(os.path.join(folder, "valid_v.npy"), valid_v)
+    np.save(os.path.join(folder, "idx_v.npy"), idx_v)
+    np.save(os.path.join(folder, "fund_v.npy"), fund_v)
 
 
 def cli():

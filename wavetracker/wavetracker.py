@@ -562,7 +562,8 @@ def main(
         "--nosave",
         help="Dont save data.",
     ),
-):
+) -> None:
+    """Run wavetracker on a single recording."""
     configure_logging(verbosity, log_to_file)
     wavetracker(
         path=input_path,
