@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
 from thunderlab.powerspectrum import decibel
-from tqdm import tqdm
-from rich.progress import Progress
+from rich.progress import track
 
 illustrate_cleanup = True
 
@@ -541,7 +540,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
     valid_power = np.max(sign_v[valid_v == 1], axis=1)
     density_v = np.zeros_like(valid_v)
 
-    for id in tqdm(np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])):
+    for id in track(np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])):
         i = idx_v[ident_v == id]
         id_densities = 1 / np.diff(i)
         id_densities = np.concatenate(
@@ -642,7 +641,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
 
         mean_d = []
         mean_p = []
-        for id in tqdm(
+        for id in track(
             np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
         ):
             i = idx_v[ident_v == id]
@@ -657,7 +656,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
     # dB_th = dB_th if dB_th > -100 else -100
     dB_th = -100
 
-    for id in tqdm(np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])):
+    for id in track(np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])):
         i = idx_v[ident_v == id]
         density = len(i) / (i[-1] - i[0] + 1)
         p = np.max(sign_v[(ident_v == id)], axis=1)
@@ -753,9 +752,9 @@ def main(folder=None):
     kde_th = None
     previous_valid_ids = np.array([])
 
-    for i0 in tqdm(
+    for i0 in track(
         np.arange(0, times[-1], int(stride * (1 - overlap))),
-        desc="striding window analysis",
+        description="Cleaning up",
     ):
         kde_th, valid_ids = get_valid_ids_by_freq_dist(
             times,
@@ -792,7 +791,7 @@ def main(folder=None):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        for id in tqdm(
+        for id in track(
             np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
         ):
             f = fund_v[ident_v == id]
@@ -820,7 +819,7 @@ def main(folder=None):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        for id in tqdm(
+        for id in track(
             np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
         ):
             f = fund_v[ident_v == id]
@@ -846,7 +845,7 @@ def main(folder=None):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        for id in tqdm(
+        for id in track(
             np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
         ):
             f = fund_v[ident_v == id]
@@ -874,7 +873,7 @@ def main(folder=None):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        # for id in tqdm(np.unique(ident_v[(~np.isnan(ident_v))])):
+        # for id in track(np.unique(ident_v[(~np.isnan(ident_v))])):
         for id in np.unique(loaded_ident_v[(~np.isnan(loaded_ident_v))]):
             ax[0].plot(
                 times[idx_v[loaded_ident_v == id]],

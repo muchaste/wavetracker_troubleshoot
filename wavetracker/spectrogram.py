@@ -9,7 +9,7 @@ import torch
 from matplotlib.mlab import specgram as mspecgram
 from scipy.signal.windows import hann
 from thunderlab.powerspectrum import get_window
-from tqdm import tqdm
+from rich.progress import track
 
 from wavetracker.device_check import get_device
 
@@ -847,9 +847,6 @@ def main():
             f'{"Hardware used":^25}: {"GPU" if not (args.cpu and available_GPU) else "CPU"}'
         )
 
-    if args.verbose < 1:
-        tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
-
     # load wavetracker configuration
     cfg = Configuration(args.config, verbose=args.verbose)
 
@@ -878,25 +875,22 @@ def main():
             )
 
         iterations = int(np.ceil(data_shape[0] / Spec.snippet_size))
-        pbar = tqdm(total=iterations)
-        for snippet_data in dataset:
+        for snippet_data in track(dataset):
             # last run !
             snippet_t0 = Spec.itter_count * Spec.snippet_size / samplerate
             if data.shape[0] // Spec.snippet_size == Spec.itter_count:
                 Spec.terminate = True
 
             Spec.snippet_spectrogram(snippet_data, snipptet_t0=snippet_t0)
-            pbar.update(1)
-        pbar.close()
 
     else:
         if args.verbose >= 1:
             print(
                 f'{"Spectrogram (CPU)":^25}: -- fine spec: {Spec._get_fine_spec} -- plotable spec: {Spec._get_sparse_spec}'
             )
-        for i0 in tqdm(
+        for i0 in track(
             np.arange(0, data.shape[0], Spec.snippet_size - Spec.noverlap),
-            desc="File analysis.",
+            description="File analysis.",
         ):
             snippet_t0 = i0 / samplerate
 

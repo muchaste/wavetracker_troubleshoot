@@ -8,7 +8,7 @@ import time
 import numpy as np
 from IPython import embed
 from PyQt5.QtCore import *
-from tqdm import tqdm
+from rich.progress import track
 
 
 def freq_tracking_v6(
@@ -117,9 +117,9 @@ def freq_tracking_v6(
         i0s = []
         i1s = []
 
-        for i in tqdm(
+        for i in track(
             range(start_idx, int(start_idx + idx_comp_range * 3)),
-            desc="error dist",
+            description="Collecting amplitude error distribution",
         ):
             i0_v = np.arange(len(idx_v))[
                 (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)
@@ -499,9 +499,9 @@ def freq_tracking_v6(
                 ):
                     continue
 
-                tmp_ident_v[
-                    tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]
-                ] = tmp_ident_v[i1_m[layer][idx1]]
+                tmp_ident_v[tmp_ident_v == tmp_ident_v[i0_m[layer][idx0]]] = (
+                    tmp_ident_v[i1_m[layer][idx1]]
+                )
 
                 if np.isnan(errors_to_v[i1_m[layer][idx1]]):
                     errors_to_v[i1_m[layer][idx1]] = cp_error_cube[layer - 1][
@@ -736,12 +736,12 @@ def freq_tracking_v6(
 
     next_identity = 0
 
-    # for i in tqdm(np.arange(np.max(idx_v)+1), desc='tracking'):
     t0 = time.time()
     min_idx, max_idx = np.min(idx_v), np.max(idx_v)
     last_start_idx = min_idx
-    for start_idx in tqdm(
-        np.arange(np.min(idx_v), np.max(idx_v) + 1), desc="tracking"
+    for start_idx in track(
+        np.arange(np.min(idx_v), np.max(idx_v) + 1),
+        description="Tracking progress",
     ):
         if verbose == 3:
             if time.time() - t0 > 5:
