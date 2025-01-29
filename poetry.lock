@@ -18,19 +18,23 @@ test = ["astroid (>=2,<4)", "pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "audioio"
-version = "2.2.0"
+version = "2.3.0"
 description = "Platform independent interfacing of numpy arrays of floats with audio files and devices for scientific data analysis."
 optional = false
-python-versions = ">=3"
+python-versions = ">=3.6"
 groups = ["main"]
-files = [
-    {file = "audioio-2.2.0-py3-none-any.whl", hash = "sha256:828c61603741db5d523946afbf266a4a5b6520b9d48719474596b008c5a52d02"},
-    {file = "audioio-2.2.0.tar.gz", hash = "sha256:12b09924c1c6a19bd4cc4b036ee5da582f177fcc8ef0fcfc559f886c2df9bdd2"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 numpy = "*"
 scipy = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/bendalab/audioio"
+reference = "HEAD"
+resolved_reference = "19ca29f62cd97fe5baedbd83535d8f5454354d95"
 
 [[package]]
 name = "click"
@@ -1149,6 +1153,26 @@ typing = ["typing-extensions"]
 xmp = ["defusedxml"]
 
 [[package]]
+name = "plottools"
+version = "1.0"
+description = "Simplify production of publication-quality figures based on matplotlib."
+optional = false
+python-versions = ">=3"
+groups = ["main"]
+files = []
+develop = false
+
+[package.dependencies]
+matplotlib = "*"
+numpy = "*"
+
+[package.source]
+type = "git"
+url = "https://github.com/bendalab/plottools"
+reference = "HEAD"
+resolved_reference = "ad71d2a782eed26ab7c6c4a6bbd8c2a3ab329c1d"
+
+[[package]]
 name = "prompt-toolkit"
 version = "3.0.50"
 description = "Library for building powerful interactive command lines in Python"
@@ -1833,4 +1857,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "ea7de1ab51a304a8f7323413dfed9d09c43317894009e5d0f1cf6ff361bf3a46"
+content-hash = "4ebc8af5dfc2b9752e477a9c59419f6a614184636b856e020c1965cdd10d5b10"

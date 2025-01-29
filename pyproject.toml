@@ -25,7 +25,9 @@ dependencies = [
     "scipy (>=1.15.1,<2.0.0)",
     "thunderfish @ git+https://github.com/janscience/thunderfish",
     "thunderlab @ git+https://github.com/bendalab/thunderlab",
-    "typer (>=0.15.1,<0.16.0)"
+    "typer (>=0.15.1,<0.16.0)",
+    "audioio @ git+https://github.com/bendalab/audioio",
+    "plottools @ git+https://github.com/bendalab/plottools"
 ]
 
 [project.scripts]

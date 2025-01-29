@@ -114,17 +114,18 @@ t0, t1 = 0, 60 * 20  # time range [s] (20 minutes)
 f_mask = np.arange(len(fine_freqs))[(fine_freqs >= f0) & (fine_freqs <= f1)]
 t_mask = np.arange(len(fine_times))[(fine_times >= t0) & (fine_times <= t1)]
 
-# Prepare the subset of the spectrogram for plotting
-spec_subset = decibel(fine_spec[f_mask[0]:f_mask[-1], t_mask[0]:t_mask[-1]][::-1])
+# Prepare the subset of the spectrogram for plotting and decibel transform
+time_subset = fine_times[t_mask]
+freq_subset = fine_freqs[f_mask]
+spec_subset = decibel(fine_spec[f_mask[0]:f_mask[-1], t_mask[0]:t_mask[-1]])
 
-# Plot the decibel-transformed spectrogram
+# Plot the spectrogram
 fig, ax = plt.subplots()
-im = ax.imshow(
+im = ax.pcolormesh(
+    time_subset,
+    freq_subset,
     spec_subset,
-    extent=[t0, t1, f0, f1],
-    aspect='auto',
     cmap='viridis',
-    interpolation='none'
 )
 
 ax.set_xlabel('Time [s]')
