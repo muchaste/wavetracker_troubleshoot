@@ -18,39 +18,18 @@ from wavetracker.gpu_harmonic_group import (
     get_fundamentals,
     harmonic_group_pipeline,
 )
-from wavetracker.logger import get_logger, pbar
+from wavetracker.logger import get_logger, get_progress, configure_logging
 from wavetracker.spectrogram import (
     Spectrogram,
     compute_aligned_snippet_length,
     get_step_and_overlap,
 )
 from wavetracker.tracking import freq_tracking_v6
+import typer
 
+app = typer.Typer(pretty_exceptions_show_locals=False)
 log = get_logger(__name__)
-
-
 device = get_device()
-available_GPU = False if device.type == "cpu" else True
-
-# warnings.filterwarnings("ignore")
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-# try:
-#     import tensorflow as tf
-#     from tensorflow.python.ops.numpy_ops import np_config
-#
-#     np_config.enable_numpy_behavior()
-#     if len(tf.config.list_physical_devices("GPU")):
-#         available_GPU = True
-#         msg = "Tensorflow installed, running on GPU."
-#         log.info(msg)
-#     else:
-#         available_GPU = False
-#         msg = "Tensorflow installed, but no GPU available. Defaulting to CPU analysis."
-#         log.warning(msg)
-# except ImportError:
-#     available_GPU = False
-#     msg = "Tensorflow not installed, defaulting to CPU analysis."
-#     log.info(msg)
 
 
 class AnalysisPipeline:
@@ -278,9 +257,9 @@ class AnalysisPipeline:
         Executes the analysis pipeline comprising spectrogram analysis and signal extracting using GPU.
         """
         iterations = self.dataset.nblocks
-        with pbar:
+        with get_progress() as pbar:
             desc = "Spectrogram + Harmonic Group"
-            task = pbar.add_task(desc, total=iterations)
+            task = pbar.add_task(desc, total=iterations + 1, transient=True)
             for enu, snippet_data in enumerate(self.dataset):
                 t0_snip = time.time()
                 snippet_t0 = (
@@ -318,8 +297,9 @@ class AnalysisPipeline:
                     )
                 pbar.update(task, advance=1)
 
-                # if enu == iterations - 1:
-                #     break
+            # if enu == iterations - 1:
+            #     break
+        return
 
     # def pipeline_CPU(self):
     #     """
@@ -448,61 +428,11 @@ class AnalysisPipeline:
         self.Spec.save()
 
 
-def cli() -> argparse.Namespace:
-    """Command line interface for wavetracker."""
-    parser = argparse.ArgumentParser(
-        description="Evaluated electrode array recordings with multiple fish."
-    )
-    parser.add_argument(
-        "path",
-        nargs="?",
-        type=Path,
-        help="Path to directory of recording or to file to be analyzed",
-    )
-    parser.add_argument(
-        "-c",
-        "--config",
-        type=str,
-        help="<config>.yaml file for analysis",
-        default=None,
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="count",
-        dest="verbose",
-        default=0,
-        help="verbosity level. Increase by specifying -v multiple times, or like -vvv",
-    )
-    parser.add_argument(
-        "--cpu", action="store_true", help="analysis using only CPU."
-    )
-    parser.add_argument(
-        "-r",
-        "--renew",
-        action="store_true",
-        help="redo all analysis; dismiss pre-saved files.",
-    )
-    parser.add_argument(
-        "-l",
-        "--logging",
-        action="store_true",
-        help="store sys.out in log.txt.",
-    )
-    parser.add_argument(
-        "-n", "--nosave", action="store_true", help="dont save spectrograms"
-    )
-    args = parser.parse_args()
-    return args
-
-
 def wavetracker(
     path,
     config=None,
     verbose=0,
-    cpu=False,
     renew=False,
-    logging=False,
     nosave=False,
 ):
     # STEP 0: Check if dataset is single file or directory of many .wav files
@@ -584,7 +514,7 @@ def wavetracker(
         save_path=save_path,
         verbose=verbose,
         logger=log,
-        gpu_use=not cpu and available_GPU,
+        gpu_use=True,
         spec=spec,
     )
 
@@ -605,22 +535,43 @@ def wavetracker(
     # STEP 7: Run the analysis
     analysis.run()
 
-    # sys.stdout.close()
-    # torch.cuda.empty_cache()
 
-
-def main():
-    args = cli()
+@app.command()
+def main(
+    input_path: Path,
+    verbosity: int = typer.Option(
+        0,
+        "-v",
+        "--verbose",
+        help="Verbosity level, e.g. -v or -vv or -vvv.",
+        count=True,
+    ),
+    renew: bool = typer.Option(
+        False,
+        "-r",
+        "--renew",
+        help="Redo all analysis; dismiss pre-saved files.",
+    ),
+    log_to_file: bool = typer.Option(
+        False,
+        "--save-logs",
+        help="Store logs to file.",
+    ),
+    no_save: bool = typer.Option(
+        False,
+        "--nosave",
+        help="Dont save data.",
+    ),
+):
+    configure_logging(verbosity, log_to_file)
     wavetracker(
-        path=args.path,
-        config=args.config,
-        verbose=args.verbose,
-        cpu=args.cpu,
-        renew=args.renew,
-        logging=args.logging,
-        nosave=args.nosave,
+        path=input_path,
+        config=None,
+        verbose=verbosity,
+        renew=renew,
+        nosave=no_save,
     )
 
 
 if __name__ == "__main__":
-    main()
+    app()

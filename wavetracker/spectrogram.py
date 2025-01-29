@@ -11,7 +11,7 @@ from scipy.signal.windows import hann
 from thunderlab.powerspectrum import get_window
 
 from wavetracker.device_check import get_device
-from wavetracker.logger import get_logger, pbar
+from wavetracker.logger import get_logger, get_progress
 
 from .config import Configuration
 from .datahandler import open_raw_data
@@ -882,7 +882,7 @@ def main():
             )
 
         iterations = int(np.ceil(data_shape[0] / Spec.snippet_size))
-        with pbar:
+        with get_progress() as pbar:
             task = pbar.add_task("Spectrogram", total=iterations)
             for snippet_data in dataset:
                 # last run !
@@ -891,7 +891,7 @@ def main():
                     Spec.terminate = True
 
                 Spec.snippet_spectrogram(snippet_data, snipptet_t0=snippet_t0)
-                bar.update(task, advance=1)
+                pbar.update(task, advance=1)
 
     else:
         if args.verbose >= 1:

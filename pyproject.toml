@@ -33,7 +33,7 @@ dependencies = [
 [project.scripts]
 EODsorter = "wavetracker.EODsorter:main"
 trackingGUI = "wavetracker.trackingGUI:main"
-wavetracker = "wavetracker.wavetracker:main"
+wavetracker = "wavetracker.wavetracker:app"
 dataviewer = "wavetracker.dataviewer:main_UI"
 cleanup = "wavetracker.clean_up:cli"
 

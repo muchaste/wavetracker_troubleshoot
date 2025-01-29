@@ -8,7 +8,7 @@ import time
 import numpy as np
 from IPython import embed
 from PyQt5.QtCore import *
-from wavetracker.logger import get_logger, pbar
+from wavetracker.logger import get_logger, get_progress
 
 
 def freq_tracking_v6(
@@ -117,7 +117,7 @@ def freq_tracking_v6(
         i0s = []
         i1s = []
 
-        with pbar:
+        with get_progress() as pbar:
             iterator = range(start_idx, int(start_idx + idx_comp_range * 3))
             total = len(iterator)
             task = pbar.add_task("Amplitude error distr.", total=total)
@@ -136,6 +136,7 @@ def freq_tracking_v6(
                 if (
                     len(i0_v) == 0 or len(i1_v) == 0
                 ):  # if nothing to assign or no targets continue
+                    pbar.update(task, advance=1)
                     continue
 
                 for enu0 in range(len(fund_v[i0_v])):
@@ -748,7 +749,7 @@ def freq_tracking_v6(
     min_idx, max_idx = np.min(idx_v), np.max(idx_v)
     last_start_idx = min_idx
 
-    with pbar:
+    with get_progress() as pbar:
         iterator = np.arange(min_idx, max_idx + 1)
         task = pbar.add_task("Tracking", total=len(iterator))
         for start_idx in iterator:
