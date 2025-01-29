@@ -3,14 +3,15 @@ import multiprocessing
 import os
 from functools import partial
 
+import gc
 import numpy as np
 import torch
 from matplotlib.mlab import specgram as mspecgram
-from rich.progress import track
 from scipy.signal.windows import hann
 from thunderlab.powerspectrum import get_window
 
 from wavetracker.device_check import get_device
+from wavetracker.logger import get_logger, pbar
 
 from .config import Configuration
 from .datahandler import open_raw_data
@@ -576,35 +577,35 @@ class Spectrogram:
             self.spec = self.spec.cpu().numpy()
             self.itter_count += 1
 
-        else:
-            self.step, self.noverlap = get_step_and_overlap(
-                self._overlap_frac, self.nfft
-            )
-            self.partial_func = partial(
-                mlab_spec,
-                samplerate=self.samplerate,
-                nfft=self.nfft,
-                noverlap=self.noverlap,
-            )
-            pool = multiprocessing.Pool(self.core_count - 1)
-            a = pool.map(
-                self.partial_func, data_snippet
-            )  # ret: spec, freq, time
-            self.spec = np.array([a[channel][0] for channel in range(len(a))])
-            self.spec_freqs = a[0][1]
-            spec_times = a[0][2]
-            pool.terminate()
-            # self.spec_times = spec_times + (i0 / self.samplerate)
-            self.sum_spec = np.sum(self.spec, axis=0)
-            # fig, ax = plt.subplots(1, 1)
-            # ax.pcolormesh(
-            #     spec_times,
-            #     self.spec_freqs,
-            #     self.sum_spec,
-            #     cmap="jet",
-            #     shading="auto",
-            # )
-            # plt.show()
+        # else:
+        #     self.step, self.noverlap = get_step_and_overlap(
+        #         self._overlap_frac, self.nfft
+        #     )
+        #     self.partial_func = partial(
+        #         mlab_spec,
+        #         samplerate=self.samplerate,
+        #         nfft=self.nfft,
+        #         noverlap=self.noverlap,
+        #     )
+        #     pool = multiprocessing.Pool(self.core_count - 1)
+        #     a = pool.map(
+        #         self.partial_func, data_snippet
+        #     )  # ret: spec, freq, time
+        #     self.spec = np.array([a[channel][0] for channel in range(len(a))])
+        #     self.spec_freqs = a[0][1]
+        #     spec_times = a[0][2]
+        #     pool.terminate()
+        #     # self.spec_times = spec_times + (i0 / self.samplerate)
+        #     self.sum_spec = np.sum(self.spec, axis=0)
+        #     # fig, ax = plt.subplots(1, 1)
+        #     # ax.pcolormesh(
+        #     #     spec_times,
+        #     #     self.spec_freqs,
+        #     #     self.sum_spec,
+        #     #     cmap="jet",
+        #     #     shading="auto",
+        #     # )
+        #     # plt.show()
 
         self.spec_times = spec_times + snipptet_t0
         self.times = np.concatenate((self.times, self.spec_times))
@@ -800,6 +801,14 @@ class Spectrogram:
                 os.path.join(self.save_path, "fine_freqs.npy"), self.spec_freqs
             )
 
+    def close(self):
+        """
+        Clears the memory-mapped spectrogram and empties cuda memory
+        """
+        del self.fine_spec
+        torch.cuda.empty_cache()
+        gc.collect()
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -873,13 +882,16 @@ def main():
             )
 
         iterations = int(np.ceil(data_shape[0] / Spec.snippet_size))
-        for snippet_data in track(dataset):
-            # last run !
-            snippet_t0 = Spec.itter_count * Spec.snippet_size / samplerate
-            if data.shape[0] // Spec.snippet_size == Spec.itter_count:
-                Spec.terminate = True
+        with pbar:
+            task = pbar.add_task("Spectrogram", total=iterations)
+            for snippet_data in dataset:
+                # last run !
+                snippet_t0 = Spec.itter_count * Spec.snippet_size / samplerate
+                if data.shape[0] // Spec.snippet_size == Spec.itter_count:
+                    Spec.terminate = True
 
-            Spec.snippet_spectrogram(snippet_data, snipptet_t0=snippet_t0)
+                Spec.snippet_spectrogram(snippet_data, snipptet_t0=snippet_t0)
+                bar.update(task, advance=1)
 
     else:
         if args.verbose >= 1:

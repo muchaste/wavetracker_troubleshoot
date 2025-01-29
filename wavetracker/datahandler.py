@@ -85,11 +85,19 @@ class MultiChannelAudioDataset(torch.utils.data.IterableDataset):
         self.data_loader = data_loader
         self.block_size = block_size
         self.noverlap = noverlap
+        self.nblocks = len(self.data_loader) // (block_size - noverlap)
 
     def __iter__(self):
         with self.data_loader as data:
             for block in data.blocks(self.block_size, self.noverlap):
                 yield torch.from_numpy(block).to(device)
+
+    def __len__(self):
+        return len(self.data_loader)
+
+    @property
+    def shape(self):
+        return self.data_loader.shape
 
 
 def open_raw_data(

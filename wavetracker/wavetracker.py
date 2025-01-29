@@ -4,6 +4,8 @@ import os
 import time
 from functools import partial
 from pathlib import Path
+import gc
+import torch
 
 import numpy as np
 from rich.progress import Progress
@@ -16,7 +18,7 @@ from wavetracker.gpu_harmonic_group import (
     get_fundamentals,
     harmonic_group_pipeline,
 )
-from wavetracker.logger import get_logger
+from wavetracker.logger import get_logger, pbar
 from wavetracker.spectrogram import (
     Spectrogram,
     compute_aligned_snippet_length,
@@ -26,24 +28,6 @@ from wavetracker.tracking import freq_tracking_v6
 
 log = get_logger(__name__)
 
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    TextColumn,
-    TimeElapsedColumn,
-    TimeRemainingColumn,
-)
-
-# Custom progress bar
-pbar = Progress(
-    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-    BarColumn(),
-    MofNCompleteColumn(),
-    TextColumn("•"),
-    TimeElapsedColumn(),
-    TextColumn("•"),
-    TimeRemainingColumn(),
-)
 
 device = get_device()
 available_GPU = False if device.type == "cpu" else True
@@ -262,10 +246,11 @@ class AnalysisPipeline:
         ):
             if self.gpu_use:
                 self.pipeline_GPU()
-            else:
-                self.pipeline_CPU()
+            # else:
+            #     self.pipeline_CPU()
             self.times = self.Spec.times
             self.save()
+            self.Spec.close()
 
         if self.verbose >= 1:
             self.logger.info(
@@ -292,21 +277,19 @@ class AnalysisPipeline:
         """
         Executes the analysis pipeline comprising spectrogram analysis and signal extracting using GPU.
         """
-        iterations = int(np.floor(self.data_shape[0] / self.Spec.snippet_size))
-
-        iter_counter = 0
-
+        iterations = self.dataset.nblocks
         with pbar:
-            task = pbar.add_task(
-                "Spectrogram + Harmonic Group", total=iterations
-            )
+            desc = "Spectrogram + Harmonic Group"
+            task = pbar.add_task(desc, total=iterations)
             for enu, snippet_data in enumerate(self.dataset):
                 t0_snip = time.time()
                 snippet_t0 = (
                     self.Spec.itter_count
                     * self.Spec.snippet_size
                     / self.samplerate
-                ) + self.Spec.snippet_overlap // 2 * self.samplerate
+                ) + (self.Spec.snippet_overlap // 2) / self.samplerate
+
+                self.logger.debug(f"Snippet {enu} t0: {snippet_t0:.2f}s")
 
                 if (
                     self.data.shape[0] // self.Spec.snippet_size
@@ -325,70 +308,70 @@ class AnalysisPipeline:
                     self.extract_snippet_signals()
                 t1_hg = time.time()
 
-                iter_counter += 1
                 t1_snip = time.time()
                 if self.verbose == 3:
                     self.logger.info(
-                        f"Progress {iter_counter / iterations:3.1%}\n"
+                        f"Progress {enu / iterations:3.1%}\n"
                         f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
                         f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
                         f"--> {t1_snip - t0_snip:.2f}s\n",
                     )
                 pbar.update(task, advance=1)
-                if enu == iterations - 1:
-                    break
 
-    def pipeline_CPU(self):
-        """
-        Executes the analysis pipeline comprising spectrogram analysis and signal extracting using CPU only.
-        """
-        counter = 0
-        iterations = self.data.shape[0] // (
-            self.Spec.snippet_size - self.Spec.noverlap
-        )
+                # if enu == iterations - 1:
+                #     break
 
-        with pbar:
-            task = pbar.add_task("File analysis.", total=iterations)
-            for i0 in np.arange(
-                0,
-                self.data.shape[0],
-                self.Spec.snippet_size - self.Spec.noverlap,
-            ):
-                t0_snip = time.time()
-                snippet_t0 = i0 / self.samplerate
-
-                if (
-                    self.data.shape[0]
-                    // (self.Spec.snippet_size - self.Spec.noverlap)
-                    * (self.Spec.snippet_size - self.Spec.noverlap)
-                    == i0
-                ):
-                    self.Spec.terminate = True
-
-                t0_spec = time.time()
-                snippet_data = [
-                    self.data[i0 : i0 + self.Spec.snippet_size, channel]
-                    for channel in self.Spec.channel_list
-                ]
-                self.Spec.snippet_spectrogram(
-                    snippet_data, snipptet_t0=snippet_t0
-                )
-                t1_spec = time.time()
-
-                t0_hg = time.time()
-                self.extract_snippet_signals()
-                t1_hg = time.time()
-                t1_snip = time.time()
-                if self.verbose == 3:
-                    self.logger.info(
-                        f"Progress {counter / iterations:3.1%}\n"
-                        f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
-                        f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
-                        f"--> {t1_snip - t0_snip:.2f}s\n",
-                    )
-                counter += 1
-                pbar.update(task, advance=1)
-
+    # def pipeline_CPU(self):
+    #     """
+    #     Executes the analysis pipeline comprising spectrogram analysis and signal extracting using CPU only.
+    #     """
+    #     counter = 0
+    #     iterations = self.data.shape[0] // (
+    #         self.Spec.snippet_size - self.Spec.noverlap
+    #     )
+    #
+    #     with pbar:
+    #         task = pbar.add_task("File analysis.", total=iterations)
+    #         for i0 in np.arange(
+    #             0,
+    #             self.data.shape[0],
+    #             self.Spec.snippet_size - self.Spec.noverlap,
+    #         ):
+    #             t0_snip = time.time()
+    #             snippet_t0 = i0 / self.samplerate
+    #
+    #             if (
+    #                 self.data.shape[0]
+    #                 // (self.Spec.snippet_size - self.Spec.noverlap)
+    #                 * (self.Spec.snippet_size - self.Spec.noverlap)
+    #                 == i0
+    #             ):
+    #                 self.Spec.terminate = True
+    #
+    #             t0_spec = time.time()
+    #             snippet_data = [
+    #                 self.data[i0 : i0 + self.Spec.snippet_size, channel]
+    #                 for channel in self.Spec.channel_list
+    #             ]
+    #             self.Spec.snippet_spectrogram(
+    #                 snippet_data, snipptet_t0=snippet_t0
+    #             )
+    #             t1_spec = time.time()
+    #
+    #             t0_hg = time.time()
+    #             self.extract_snippet_signals()
+    #             t1_hg = time.time()
+    #             t1_snip = time.time()
+    #             if self.verbose == 3:
+    #                 self.logger.info(
+    #                     f"Progress {counter / iterations:3.1%}\n"
+    #                     f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
+    #                     f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
+    #                     f"--> {t1_snip - t0_snip:.2f}s\n",
+    #                 )
+    #             counter += 1
+    #             pbar.update(task, advance=1)
+    #
     def extract_snippet_signals(self):
         """
         Extracts harmonic groups from a snippet spectrogram. Different features of the extracted signals are sorted in
@@ -610,7 +593,8 @@ def wavetracker(
             analysis.Spec.get_sparse_spec,
             analysis.Spec.get_fine_spec,
             analysis.get_signals,
-        ) = True, True, True
+            analysis.do_tracking,
+        ) = True, True, True, True
 
     if nosave:
         analysis.Spec.get_sparse_spec, analysis.Spec.get_fine_spec = (

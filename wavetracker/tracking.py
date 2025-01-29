@@ -8,7 +8,7 @@ import time
 import numpy as np
 from IPython import embed
 from PyQt5.QtCore import *
-from rich.progress import track
+from wavetracker.logger import get_logger, pbar
 
 
 def freq_tracking_v6(
@@ -117,55 +117,59 @@ def freq_tracking_v6(
         i0s = []
         i1s = []
 
-        for i in track(
-            range(start_idx, int(start_idx + idx_comp_range * 3)),
-            description="Collecting amplitude error distribution",
-        ):
-            i0_v = np.arange(len(idx_v))[
-                (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)
-            ]  # indices of fundamtenals to assign
-            i1_v = np.arange(len(idx_v))[
-                (idx_v > i)
-                & (idx_v <= (i + int(idx_comp_range)))
-                & (fund_v >= min_freq)
-                & (fund_v <= max_freq)
-            ]  # indices of possible targets
+        with pbar:
+            iterator = range(start_idx, int(start_idx + idx_comp_range * 3))
+            total = len(iterator)
+            task = pbar.add_task("Amplitude error distr.", total=total)
 
-            if (
-                len(i0_v) == 0 or len(i1_v) == 0
-            ):  # if nothing to assign or no targets continue
-                continue
+            for i in iterator:
+                i0_v = np.arange(len(idx_v))[
+                    (idx_v == i) & (fund_v >= min_freq) & (fund_v <= max_freq)
+                ]  # indices of fundamtenals to assign
+                i1_v = np.arange(len(idx_v))[
+                    (idx_v > i)
+                    & (idx_v <= (i + int(idx_comp_range)))
+                    & (fund_v >= min_freq)
+                    & (fund_v <= max_freq)
+                ]  # indices of possible targets
 
-            for enu0 in range(len(fund_v[i0_v])):
                 if (
-                    fund_v[i0_v[enu0]] < min_freq
-                    or fund_v[i0_v[enu0]] > max_freq
-                ):
+                    len(i0_v) == 0 or len(i1_v) == 0
+                ):  # if nothing to assign or no targets continue
                     continue
-                for enu1 in range(len(fund_v[i1_v])):
+
+                for enu0 in range(len(fund_v[i0_v])):
                     if (
-                        fund_v[i1_v[enu1]] < min_freq
-                        or fund_v[i1_v[enu1]] > max_freq
+                        fund_v[i0_v[enu0]] < min_freq
+                        or fund_v[i0_v[enu0]] > max_freq
                     ):
                         continue
-                    a_error_distribution.append(
-                        np.sqrt(
-                            np.sum(
-                                [
-                                    (
-                                        norm_sign_v[i0_v[enu0]][k]
-                                        - norm_sign_v[i1_v[enu1]][k]
-                                    )
-                                    ** 2
-                                    for k in range(
-                                        len(norm_sign_v[i0_v[enu0]])
-                                    )
-                                ]
+                    for enu1 in range(len(fund_v[i1_v])):
+                        if (
+                            fund_v[i1_v[enu1]] < min_freq
+                            or fund_v[i1_v[enu1]] > max_freq
+                        ):
+                            continue
+                        a_error_distribution.append(
+                            np.sqrt(
+                                np.sum(
+                                    [
+                                        (
+                                            norm_sign_v[i0_v[enu0]][k]
+                                            - norm_sign_v[i1_v[enu1]][k]
+                                        )
+                                        ** 2
+                                        for k in range(
+                                            len(norm_sign_v[i0_v[enu0]])
+                                        )
+                                    ]
+                                )
                             )
                         )
-                    )
-                    i0s.append(i0_v[enu0])
-                    i1s.append(i1_v[enu1])
+                        i0s.append(i0_v[enu0])
+                        i1s.append(i1_v[enu1])
+
+                pbar.update(task, advance=1)
 
         a_error_distribution = np.array(a_error_distribution)
         return a_error_distribution
@@ -743,22 +747,74 @@ def freq_tracking_v6(
     t0 = time.time()
     min_idx, max_idx = np.min(idx_v), np.max(idx_v)
     last_start_idx = min_idx
-    for start_idx in track(
-        np.arange(np.min(idx_v), np.max(idx_v) + 1),
-        description="Tracking progress",
-    ):
-        if verbose == 3:
-            if time.time() - t0 > 5:
-                print(
-                    f"{' ':^25}  Progress {(start_idx - min_idx) / (max_idx - min_idx):3.1%} "
-                    f"({start_idx - min_idx:.0f}/{max_idx - min_idx:.0f})"
-                    f"-> {start_idx - last_start_idx} itt/5s",
-                    end="\r",
-                )
-                t0 = time.time()
-                last_start_idx = start_idx
 
-        if len(np.hstack(i0_m)) == 0 or len(np.hstack(i1_m)) == 0:
+    with pbar:
+        iterator = np.arange(min_idx, max_idx + 1)
+        task = pbar.add_task("Tracking", total=len(iterator))
+        for start_idx in iterator:
+            if verbose == 3:
+                if time.time() - t0 > 5:
+                    print(
+                        f"{' ':^25}  Progress {(start_idx - min_idx) / (max_idx - min_idx):3.1%} "
+                        f"({start_idx - min_idx:.0f}/{max_idx - min_idx:.0f})"
+                        f"-> {start_idx - last_start_idx} itt/5s",
+                        end="\r",
+                    )
+                    t0 = time.time()
+                    last_start_idx = start_idx
+
+            if len(np.hstack(i0_m)) == 0 or len(np.hstack(i1_m)) == 0:
+                error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(
+                    i0_m,
+                    i1_m,
+                    error_cube,
+                    cube_app_idx,
+                    min_freq,
+                    max_freq,
+                    update=True,
+                )
+                continue
+
+            if (
+                abs_start_idx - start_idx
+            ) % idx_comp_range == 0:  # next total sorting step
+                tmp_ident_v, errors_to_v = get_tmp_identities(
+                    i0_m,
+                    i1_m,
+                    error_cube,
+                    fund_v,
+                    idx_v,
+                    start_idx,
+                    idx_comp_range,
+                )
+
+                if (
+                    abs_start_idx - start_idx == 0
+                ):  # initial assignment of tmp_identities
+                    for ident in np.unique(
+                        tmp_ident_v[~np.isnan(tmp_ident_v)]
+                    ):
+                        ident_v[
+                            (tmp_ident_v == ident)
+                            & (idx_v <= start_idx + idx_comp_range)
+                        ] = next_identity
+                        next_identity += 1
+
+                # assing tmp identities ##################################
+                ident_v, next_identity = assign_tmp_ids(
+                    ident_v,
+                    tmp_ident_v,
+                    idx_v,
+                    fund_v,
+                    error_cube,
+                    idx_comp_range,
+                    next_identity,
+                    i0_m,
+                    i1_m,
+                    min_freq,
+                    max_freq,
+                )
+
             error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(
                 i0_m,
                 i1_m,
@@ -768,56 +824,9 @@ def freq_tracking_v6(
                 max_freq,
                 update=True,
             )
-            continue
+            # start_idx += 1
 
-        if (
-            abs_start_idx - start_idx
-        ) % idx_comp_range == 0:  # next total sorting step
-            tmp_ident_v, errors_to_v = get_tmp_identities(
-                i0_m,
-                i1_m,
-                error_cube,
-                fund_v,
-                idx_v,
-                start_idx,
-                idx_comp_range,
-            )
-
-            if (
-                abs_start_idx - start_idx == 0
-            ):  # initial assignment of tmp_identities
-                for ident in np.unique(tmp_ident_v[~np.isnan(tmp_ident_v)]):
-                    ident_v[
-                        (tmp_ident_v == ident)
-                        & (idx_v <= start_idx + idx_comp_range)
-                    ] = next_identity
-                    next_identity += 1
-
-            # assing tmp identities ##################################
-            ident_v, next_identity = assign_tmp_ids(
-                ident_v,
-                tmp_ident_v,
-                idx_v,
-                fund_v,
-                error_cube,
-                idx_comp_range,
-                next_identity,
-                i0_m,
-                i1_m,
-                min_freq,
-                max_freq,
-            )
-
-        error_cube, i0_m, i1_m, cube_app_idx = create_error_cube(
-            i0_m,
-            i1_m,
-            error_cube,
-            cube_app_idx,
-            min_freq,
-            max_freq,
-            update=True,
-        )
-        # start_idx += 1
+            pbar.update(task, advance=1)
 
     return ident_v
 
