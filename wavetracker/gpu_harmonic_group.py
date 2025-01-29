@@ -131,10 +131,8 @@ def threshold_estimate(log_spec, log_spec_detrend, hist, bins):
     mind = 1e6
 
     for i in range(len(log_spec_detrend)):
-        if log_spec_detrend[i] > maxd:
-            maxd = log_spec_detrend[i]
-        if log_spec_detrend[i] < mind:
-            mind = log_spec_detrend[i]
+        maxd = max(log_spec_detrend[i], maxd)
+        mind = min(log_spec_detrend[i], mind)
     #     contrast = math.fabs((maxd - mind) / (maxd + mind))
 
     r = maxd - mind
@@ -147,8 +145,7 @@ def threshold_estimate(log_spec, log_spec_detrend, hist, bins):
                 hist[i] += 1
     max_hist = 0
     for i in range(len(hist)):
-        if hist[i] > max_hist:
-            max_hist = hist[i]
+        max_hist = max(hist[i], max_hist)
     hist_th = max_hist * 1.0 / math.sqrt(math.e)
     return hist_th
 
@@ -384,9 +381,8 @@ def get_group(
                 or abs(spec_freqs[out[i]] % mains_freq - 50) < mains_freq_tol
             ):
                 continue
-            else:
-                n += 1
-                peak_sum += log_spec[out[i]]
+            n += 1
+            peak_sum += log_spec[out[i]]
 
     if n != 0:
         peak_mean = peak_sum / n
@@ -762,26 +758,25 @@ def main():
         for hg in np.unique(assigned_hg[t]):
             if hg == 0:
                 continue
+            f0 = spec_freq[assigned_hg[t] == hg][0]
+            if f0 < cfg.harmonic_groups["min_freq"]:
+                ax.plot(
+                    spec_freq[assigned_hg[t] == hg],
+                    log_spec[t][assigned_hg[t] == hg],
+                    "o",
+                    markersize=8,
+                    mfc="none",
+                    mew=2,
+                    label=f"{spec_freq[assigned_hg[t] == hg][0]:.2f}Hz",
+                )
             else:
-                f0 = spec_freq[assigned_hg[t] == hg][0]
-                if f0 < cfg.harmonic_groups["min_freq"]:
-                    ax.plot(
-                        spec_freq[assigned_hg[t] == hg],
-                        log_spec[t][assigned_hg[t] == hg],
-                        "o",
-                        markersize=8,
-                        mfc="none",
-                        mew=2,
-                        label=f"{spec_freq[assigned_hg[t] == hg][0]:.2f}Hz",
-                    )
-                else:
-                    ax.plot(
-                        spec_freq[assigned_hg[t] == hg],
-                        log_spec[t][assigned_hg[t] == hg],
-                        "o",
-                        markersize=10,
-                        label=f"{spec_freq[assigned_hg[t] == hg][0]:.2f}Hz",
-                    )
+                ax.plot(
+                    spec_freq[assigned_hg[t] == hg],
+                    log_spec[t][assigned_hg[t] == hg],
+                    "o",
+                    markersize=10,
+                    label=f"{spec_freq[assigned_hg[t] == hg][0]:.2f}Hz",
+                )
         ax.legend(loc=1)
 
     fundamentals = get_fundamentals(assigned_hg, spec_freq)

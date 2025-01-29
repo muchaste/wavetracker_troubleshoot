@@ -1,9 +1,6 @@
-import torch
-import gc
 import argparse
 import multiprocessing
 import os
-import sys
 import time
 from functools import partial
 from pathlib import Path
@@ -13,7 +10,7 @@ from rich.progress import Progress
 from thunderfish.harmonics import fundamental_freqs, harmonic_groups
 
 from wavetracker.config import Configuration
-from wavetracker.datahandler import open_raw_data, MultiChannelAudioDataset
+from wavetracker.datahandler import MultiChannelAudioDataset, open_raw_data
 from wavetracker.device_check import get_device
 from wavetracker.gpu_harmonic_group import (
     get_fundamentals,
@@ -32,7 +29,6 @@ log = get_logger(__name__)
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
-    Progress,
     TextColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
@@ -336,7 +332,7 @@ class AnalysisPipeline:
                         f"Progress {iter_counter / iterations:3.1%}\n"
                         f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
                         f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
-                        f"--> {t1_snip-t0_snip:.2f}s\n",
+                        f"--> {t1_snip - t0_snip:.2f}s\n",
                     )
                 pbar.update(task, advance=1)
                 if enu == iterations - 1:
@@ -388,7 +384,7 @@ class AnalysisPipeline:
                         f"Progress {counter / iterations:3.1%}\n"
                         f"-- Spectrogram: {t1_spec - t0_spec:.2f}s\n"
                         f"-- Harmonic group: {t1_hg - t0_hg:.2f}s\n"
-                        f"--> {t1_snip-t0_snip:.2f}s\n",
+                        f"--> {t1_snip - t0_snip:.2f}s\n",
                     )
                 counter += 1
                 pbar.update(task, advance=1)

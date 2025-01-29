@@ -1,14 +1,14 @@
+import argparse
 import itertools
 import os
 import sys
-
 from pathlib import Path
-import argparse
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
-from thunderlab.powerspectrum import decibel
 from rich.progress import track
+from thunderlab.powerspectrum import decibel
 
 illustrate_cleanup = True
 
@@ -19,15 +19,14 @@ def gauss(t, shift, sigma, size, norm=False):
         if norm:
             g /= np.sum(g)
         return g
-    else:
-        t = np.array([t] * len(shift))
-        res = (
-            np.exp(-(((t.transpose() - shift).transpose() / sigma) ** 2) / 2)
-            * size
-        )
-        s = np.sum(res, axis=1)
-        res = res / s.reshape(len(s), 1)
-        return res
+    t = np.array([t] * len(shift))
+    res = (
+        np.exp(-(((t.transpose() - shift).transpose() / sigma) ** 2) / 2)
+        * size
+    )
+    s = np.sum(res, axis=1)
+    res = res / s.reshape(len(s), 1)
+    return res
 
 
 def get_valid_ids_by_freq_dist(
@@ -155,7 +154,7 @@ def connect_by_similarity(
     idx0s = idx0s[~similar_mask]
     idx1s = idx1s[~similar_mask]
 
-    for enu, (idx0, idx1) in enumerate(zip(idx0s, idx1s)):
+    for enu, (idx0, idx1) in enumerate(zip(idx0s, idx1s, strict=False)):
         if np.abs(valid_ids[idx0, 1] - valid_ids[idx1, 1]) > f_th:
             break
         id0 = valid_ids[idx0, 0]
@@ -184,12 +183,12 @@ def connect_by_similarity(
         d_idx_v = np.intersect1d(idx_v_m, idx_v_l)
 
         join_idx_v = np.concatenate(
-            (idx_v_m, idx_v_l[~np.in1d(idx_v_l, d_idx_v)])
+            (idx_v_m, idx_v_l[~np.isin(idx_v_l, d_idx_v)])
         )
         help_v = np.ones_like(join_idx_v)
         help_v[: len(idx_v_m)] = 0
         join_fund_v = np.concatenate(
-            (fund_v_m, fund_v_l[~np.in1d(idx_v_l, d_idx_v)])
+            (fund_v_m, fund_v_l[~np.isin(idx_v_l, d_idx_v)])
         )
 
         sorter = np.argsort(join_idx_v)
@@ -201,10 +200,10 @@ def connect_by_similarity(
             continue
 
         ident_v[
-            (np.in1d(idx_v, np.array(double_idx))) & (ident_v == less_id)
+            (np.isin(idx_v, np.array(double_idx))) & (ident_v == less_id)
         ] = np.nan
         valid_v[
-            (np.in1d(idx_v, np.array(double_idx))) & (ident_v == less_id)
+            (np.isin(idx_v, np.array(double_idx))) & (ident_v == less_id)
         ] = 0
 
         if valid_ids[idx0, 2] < valid_ids[idx1, 2]:
@@ -285,7 +284,7 @@ def connect_with_overlap(fund_v, ident_v, valid_v, idx_v, times):
 
         taken_idxs0 = idx_v[(ident_v == id0)]
         taken_idxs1 = idx_v[(ident_v == id1)]
-        double_idx = np.in1d(taken_idxs0, taken_idxs1)
+        double_idx = np.isin(taken_idxs0, taken_idxs1)
 
         if (
             np.sum(double_idx) > len(taken_idxs1) * 0.01
@@ -502,7 +501,7 @@ def connect_with_overlap(fund_v, ident_v, valid_v, idx_v, times):
             #
             if overlap_count0 <= 1 and overlap_count1 <= 1:
                 ax.set_title(
-                    f"d0: {density0:.2f} " f"d1: {density1:.2f} " f"no overlap"
+                    f"d0: {density0:.2f} d1: {density1:.2f} no overlap"
                 )
             else:
                 ax.set_title(
@@ -707,7 +706,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
                     # ax[0].plot(up_idx, np.ones(len(up_idx))*dB_th, 'og', markersize=10)
                     # ax[0].plot(down_idx, np.ones(len(down_idx))*dB_th, 'or', markersize=10)
                     next_ident = np.nanmax(ident_v) + 1
-                    for ui, di in zip(up_idx, down_idx):
+                    for ui, di in zip(up_idx, down_idx, strict=False):
                         ident_v[
                             (ident_v == id) & (idx_v >= ui) & (idx_v < di)
                         ] = next_ident

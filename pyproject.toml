@@ -89,4 +89,5 @@ line-ending = "auto"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.9.3"
+ipython = "^8.31.0"
 

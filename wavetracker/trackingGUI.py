@@ -424,8 +424,7 @@ class EOD_extraxt(QThread):
             self.SpecSettings.end_time = end_time
         else:
             end_idx = int(self.SpecSettings.end_time * self.samplerate)
-            if end_idx >= int(len(self.data) - 1):
-                end_idx = int(len(self.data) - 1)
+            end_idx = min(int(len(self.data) - 1), end_idx)
 
         last_run = False
         get_spec_plot_matrix = False
@@ -586,8 +585,7 @@ class EOD_extraxt(QThread):
             self.SpecSettings.end_time = end_time
         else:
             end_idx = int(self.SpecSettings.end_time * self.samplerate)
-            if end_idx >= int(len(self.data) - 1):
-                end_idx = int(len(self.data) - 1)
+            end_idx = min(int(len(self.data) - 1), end_idx)
 
         last_run = False
         get_spec_plot_matrix = False

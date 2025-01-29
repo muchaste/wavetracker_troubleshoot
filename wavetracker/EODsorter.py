@@ -55,8 +55,7 @@ def decibel(power, ref_power=1.0, min_power=1e-20):
     )
     if isinstance(power, (list, tuple, np.ndarray)):
         return decibel_psd
-    else:
-        return decibel_psd[0]
+    return decibel_psd[0]
 
 
 class color:
@@ -233,7 +232,7 @@ class PlotWidget:
             delete_handle = np.array(self.trace_handles)[mask]
 
             delete_afterwards = []
-            for dhi, dh in zip(delete_handle_idx, delete_handle):
+            for dhi, dh in zip(delete_handle_idx, delete_handle, strict=False):
                 dh[0].remove()
                 if len(ident_v[ident_v == dh[1]]) >= 1:
                     c = np.random.rand(3)
@@ -902,7 +901,7 @@ class MainWindow(QMainWindow):
 
         # self.ident_v[(self.idx_v == overlapping_idxs) & (self.ident_v == self.active_ident0)] = np.nan
         self.ident_v[
-            (np.in1d(self.idx_v, np.array(overlapping_idxs)))
+            (np.isin(self.idx_v, np.array(overlapping_idxs)))
             & (self.ident_v == self.active_id)
         ] = np.nan
         self.ident_v[self.ident_v == self.active_id2] = self.active_id
@@ -952,7 +951,7 @@ class MainWindow(QMainWindow):
                 self.idx_v[self.ident_v == ai],
             )
             self.ident_v[
-                (np.in1d(self.idx_v, np.array(overlapping_idxs)))
+                (np.isin(self.idx_v, np.array(overlapping_idxs)))
                 & (self.ident_v == ai)
             ] = np.nan
             self.ident_v[self.ident_v == ai] = target_ident
@@ -1373,16 +1372,16 @@ class MainWindow(QMainWindow):
                     self.Plot.move_right()
                     self.Plot.clock_time(self.rec_datetime, self.times)
                     return True
-                elif event.key() == Qt.Key_Left:
+                if event.key() == Qt.Key_Left:
                     self.Plot.move_left()
                     self.Plot.clock_time(self.rec_datetime, self.times)
                     return True
-                elif event.key() == Qt.Key_Up:
+                if event.key() == Qt.Key_Up:
                     self.Plot.move_up()
                     self.Plot.clock_time(self.rec_datetime, self.times)
                     return True
 
-                elif event.key() == Qt.Key_Down:
+                if event.key() == Qt.Key_Down:
                     self.Plot.move_down()
                     self.Plot.clock_time(self.rec_datetime, self.times)
                     return True
@@ -1783,9 +1782,9 @@ class MainWindow(QMainWindow):
     def undo(self):
         if hasattr(self.last_ident_v, "__len__"):
             if self.cb_SCH_MCH.currentIndex() == 0:
-                self.all_ident_v[
-                    self.cb_channel.currentIndex()
-                ] = self.last_ident_v
+                self.all_ident_v[self.cb_channel.currentIndex()] = (
+                    self.last_ident_v
+                )
                 self.ident_v = self.all_ident_v[self.cb_channel.currentIndex()]
             elif self.cb_SCH_MCH.currentIndex() == 1:
                 self.ident_v = self.last_ident_v

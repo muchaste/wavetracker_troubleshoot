@@ -388,6 +388,7 @@ def freq_tracking_v6(
             layers[:i_non_nan],
             idx0s[:i_non_nan],
             idx1s[:i_non_nan],
+            strict=False,
         ):
             if np.isnan(cp_error_cube[layer - 1, idx0, idx1]):
                 break
@@ -610,7 +611,10 @@ def freq_tracking_v6(
 
         already_assigned = []
         for layer, idx0, idx1 in zip(
-            layers[:i_non_nan], idx0s[:i_non_nan], idx1s[:i_non_nan]
+            layers[:i_non_nan],
+            idx0s[:i_non_nan],
+            idx1s[:i_non_nan],
+            strict=False,
         ):
             idents_to_assigne = p_ident_v[
                 ~np.isnan(p_tmp_ident_v)
@@ -746,9 +750,9 @@ def freq_tracking_v6(
         if verbose == 3:
             if time.time() - t0 > 5:
                 print(
-                    f'{" ":^25}  Progress {(start_idx-min_idx) / (max_idx-min_idx):3.1%} '
-                    f'({start_idx-min_idx:.0f}/{max_idx-min_idx:.0f})'
-                    f'-> {start_idx-last_start_idx} itt/5s',
+                    f"{' ':^25}  Progress {(start_idx - min_idx) / (max_idx - min_idx):3.1%} "
+                    f"({start_idx - min_idx:.0f}/{max_idx - min_idx:.0f})"
+                    f"-> {start_idx - last_start_idx} itt/5s",
                     end="\r",
                 )
                 t0 = time.time()

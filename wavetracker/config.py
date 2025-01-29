@@ -67,6 +67,7 @@ class Configuration:
                     for k, v in zip(
                         getattr(self, dict).keys(),
                         getattr(self, dict).values(),
+                        strict=False,
                     )
                 )
             )

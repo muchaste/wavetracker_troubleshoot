@@ -1,15 +1,14 @@
 import argparse
 import multiprocessing
 import os
-from functools import partial, partialmethod
+from functools import partial
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.mlab import specgram as mspecgram
+from rich.progress import track
 from scipy.signal.windows import hann
 from thunderlab.powerspectrum import get_window
-from rich.progress import track
 
 from wavetracker.device_check import get_device
 
@@ -365,7 +364,6 @@ class Spectrogram:
             kwargs : dict
                 Excess parameters from the configuration dictionary passed to the function.
         """
-
         self.save_path = folder
         self.verbose = verbose
         self.kwargs = kwargs
@@ -844,7 +842,7 @@ def main():
 
     if args.verbose >= 1:
         print(
-            f'{"Hardware used":^25}: {"GPU" if not (args.cpu and available_GPU) else "CPU"}'
+            f"{'Hardware used':^25}: {'GPU' if not (args.cpu and available_GPU) else 'CPU'}"
         )
 
     # load wavetracker configuration
@@ -871,7 +869,7 @@ def main():
     if available_GPU and not args.cpu:
         if args.verbose >= 1:
             print(
-                f'{"Spectrogram (GPU)":^25}: -- fine spec: {Spec._get_fine_spec} -- plotable spec: {Spec._get_sparse_spec}'
+                f"{'Spectrogram (GPU)':^25}: -- fine spec: {Spec._get_fine_spec} -- plotable spec: {Spec._get_sparse_spec}"
             )
 
         iterations = int(np.ceil(data_shape[0] / Spec.snippet_size))
@@ -886,7 +884,7 @@ def main():
     else:
         if args.verbose >= 1:
             print(
-                f'{"Spectrogram (CPU)":^25}: -- fine spec: {Spec._get_fine_spec} -- plotable spec: {Spec._get_sparse_spec}'
+                f"{'Spectrogram (CPU)':^25}: -- fine spec: {Spec._get_fine_spec} -- plotable spec: {Spec._get_sparse_spec}"
             )
         for i0 in track(
             np.arange(0, data.shape[0], Spec.snippet_size - Spec.noverlap),

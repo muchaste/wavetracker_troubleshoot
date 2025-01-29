@@ -1,5 +1,4 @@
 import argparse
-from typing import Union
 import os
 
 import matplotlib.pyplot as plt
@@ -94,7 +93,7 @@ class MultiChannelAudioDataset(torch.utils.data.IterableDataset):
 
 
 def open_raw_data(
-    filename: Union[str, list],
+    filename: str | list,
     buffersize: float = 60.0,
     backsize: float = 0.0,
     channel: int = -1,
