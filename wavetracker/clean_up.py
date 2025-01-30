@@ -7,7 +7,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
-from rich.progress import track
 from thunderlab.powerspectrum import decibel
 
 illustrate_cleanup = True
@@ -51,7 +50,7 @@ def get_valid_ids_by_freq_dist(
     if len(ff) == 0:
         return None, old_valid_ids
 
-    # ToDo: min_freq & max_freq + buffer (.cfg)
+    # TODO: min_freq & max_freq + buffer (.cfg)
     convolve_f = np.arange(400, 1200, 0.1)
     g = gauss(convolve_f, ff, sigma=2 * f_th, size=1, norm=True)
     kde = np.sum(g, axis=0)
@@ -100,13 +99,29 @@ def get_valid_ids_by_freq_dist(
             continue
 
         valid = False
-        # TODO: This fails when no data in array
+
+        # Ensure arrays are not empty before calling np.min()
+        if valid_f.size > 0 and f.size > 0:
+            min_abs_diff = np.min(np.abs(valid_f - f[:, np.newaxis]))
+        else:
+            min_abs_diff = (
+                np.inf
+            )  # Use a large value so condition fails safely
+
         if (
-            np.min(np.abs(valid_f - f[:, np.newaxis]))
-            <= (convolve_f[1] - convolve_f[0]) / 2
+            min_abs_diff <= (convolve_f[1] - convolve_f[0]) / 2
             or id in old_valid_ids
         ):
             valid = True
+
+        # valid = False
+        # # TODO: This fails when no data in array
+        # if (
+        #     np.min(np.abs(valid_f - f[:, np.newaxis]))
+        #     <= (convolve_f[1] - convolve_f[0]) / 2
+        #     or id in old_valid_ids
+        # ):
+        #     valid = True
         else:
             pass
 
@@ -539,7 +554,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
     valid_power = np.max(sign_v[valid_v == 1], axis=1)
     density_v = np.zeros_like(valid_v)
 
-    for id in track(np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])):
+    for id in np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)]):
         i = idx_v[ident_v == id]
         id_densities = 1 / np.diff(i)
         id_densities = np.concatenate(
@@ -640,9 +655,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
 
         mean_d = []
         mean_p = []
-        for id in track(
-            np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
-        ):
+        for id in np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)]):
             i = idx_v[ident_v == id]
             d = len(i) / (i[-1] - i[0] + 1)
             p = np.mean(np.max(sign_v[ident_v == id], axis=1))
@@ -655,7 +668,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
     # dB_th = dB_th if dB_th > -100 else -100
     dB_th = -100
 
-    for id in track(np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])):
+    for id in np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)]):
         i = idx_v[ident_v == id]
         density = len(i) / (i[-1] - i[0] + 1)
         p = np.max(sign_v[(ident_v == id)], axis=1)
@@ -739,10 +752,7 @@ def main(folder):
     previous_valid_ids = np.array([])
     n_fish = 2
 
-    for i0 in track(
-        np.arange(0, times[-1], int(stride * (1 - overlap))),
-        description="Cleaning up",
-    ):
+    for i0 in np.arange(0, times[-1], int(stride * (1 - overlap))):
         kde_th, valid_ids = get_valid_ids_by_freq_dist(
             times,
             idx_v,
@@ -778,9 +788,7 @@ def main(folder):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        for id in track(
-            np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
-        ):
+        for id in np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)]):
             f = fund_v[ident_v == id]
             i = idx_v[ident_v == id]
             ax[0].text(
@@ -806,9 +814,7 @@ def main(folder):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        for id in track(
-            np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
-        ):
+        for id in np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)]):
             f = fund_v[ident_v == id]
             i = idx_v[ident_v == id]
             ax[0].text(
@@ -856,9 +862,7 @@ def main(folder):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        for id in track(
-            np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)])
-        ):
+        for id in np.unique(ident_v[(~np.isnan(ident_v)) & (valid_v == 1)]):
             f = fund_v[ident_v == id]
             i = idx_v[ident_v == id]
 
@@ -884,7 +888,7 @@ def main(folder):
         ax = []
         ax.append(fig.add_subplot(gs[0, 0]))
 
-        # for id in track(np.unique(ident_v[(~np.isnan(ident_v))])):
+        # for id in np.unique(ident_v[(~np.isnan(ident_v))]):
         for id in np.unique(loaded_ident_v[(~np.isnan(loaded_ident_v))]):
             ax[0].plot(
                 times[idx_v[loaded_ident_v == id]],
@@ -897,7 +901,6 @@ def main(folder):
 
     # save data
     np.save(os.path.join(folder, "ident_v.npy"), ident_v)
-    # np.save(os.path.join(folder, "valid_v.npy"), valid_v)
     np.save(os.path.join(folder, "idx_v.npy"), idx_v)
     np.save(os.path.join(folder, "fund_v.npy"), fund_v)
 

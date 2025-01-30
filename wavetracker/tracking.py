@@ -119,7 +119,7 @@ def freq_tracking_v6(
 
         with get_progress() as pbar:
             iterator = range(start_idx, int(start_idx + idx_comp_range * 3))
-            total = len(iterator)
+            total = len(iterator) + 1
             task = pbar.add_task("Amplitude error distr.", total=total)
 
             for i in iterator:
@@ -144,12 +144,14 @@ def freq_tracking_v6(
                         fund_v[i0_v[enu0]] < min_freq
                         or fund_v[i0_v[enu0]] > max_freq
                     ):
+                        pbar.update(task, advance=1)
                         continue
                     for enu1 in range(len(fund_v[i1_v])):
                         if (
                             fund_v[i1_v[enu1]] < min_freq
                             or fund_v[i1_v[enu1]] > max_freq
                         ):
+                            pbar.update(task, advance=1)
                             continue
                         a_error_distribution.append(
                             np.sqrt(
