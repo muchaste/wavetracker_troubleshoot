@@ -20,7 +20,95 @@ tracking errors. For a detailed explanation and usage, see the
 1. **EOD frequency (fundamentals)**  
 2. **Signal strength across multiple electrodes (signatures)**
 
+### Installation
+
+> **Prereqs**  
+> * Python 3.9 – 3.12 on your PATH  
+> * Git ≥ 2.20  
+> * *(Recommended)* A virtual environment manager (`venv`, Conda, Poetry, etc.)
+
+---
+
+#### macOS / Linux
+
+1. Clone the dev branch
+
+```bash
+git clone -b dev https://github.com/weygoldt/wavetracker.git
+cd wavetracker
+```
+
+2. (Recommended) create & activate a virtual environment
+
+```bash
+python -m venv wavetracker_env
+source wavetracker_env/bin/activate
+```
+
+3. Install wavetracker in editable mode
+
+```bash
+pip install -e .
+```
+
+4. Test the installation
+
+```bash
+python -c "import wavetracker, sys; print('wavetracker:', wavetracker.__version__)"
+```
+
+---
+
+#### Windows
+
+> **Good terminals to use:** PowerShell 5+, Windows Terminal, Git Bash, or the Anaconda Prompt.
+
+```powershell
+# 1 . Clone the dev branch
+git clone -b dev https://github.com/weygoldt/wavetracker.git
+cd wavetracker
+```
+
+**2 A. Use the built‑in `venv`**
+
+```powershell
+python -m venv wavetracker_env          # create env
+.\wavetracker_env\Scripts\Activate.ps1  # PowerShell
+REM —or for CMD—
+REM wavetracker_env\Scripts\activate.bat
+
+pip install -e .                        # editable install
+```
+
+**2 B. Use Conda (Anaconda / Miniconda)**
+
+```powershell
+conda create -n wavetracker python=3.11     # pick your Python
+conda activate wavetracker
+pip install -e .                            # still use pip here
+```
+
+**3. Verify**
+
+```powershell
+python -c "import wavetracker, sys; print('wavetracker:', wavetracker.__version__)"
+```
+
+---
+
+**Common gotchas on Windows**
+
+| Symptom | Fix |
+|---------|-----|
+| **`Activate.ps1 cannot be loaded because running scripts is disabled…`** | Run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once, then re‑activate. |
+| Long‑path errors on older Windows releases | Enable *Developer Mode* in *Settings → For developers* **or** `git config --system core.longpaths true`. |
+| Want GPU builds of PyTorch/CUDA deps | Create the Conda env first (`conda create -n wavetracker pytorch cudatoolkit=12.1 -c pytorch -c nvidia`), then `pip install -e .`. |
+
+
 ### Basic Usage
+
+To run the `wavetracker` pipeline, use the following command:
+
 ```bash
 wavetracker /path/to/dataset
 ```
