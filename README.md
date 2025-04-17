@@ -54,7 +54,7 @@ pip install -e .
 4. Test the installation
 
 ```bash
-python -c "import wavetracker, sys; print('wavetracker:', wavetracker.__version__)"
+python -c "import importlib.metadata, wavetracker; print('wavetracker version:', importlib.metadata.version('wavetracker'))"
 ```
 
 ---
@@ -91,7 +91,7 @@ pip install -e .                            # still use pip here
 **3. Verify**
 
 ```powershell
-python -c "import wavetracker, sys; print('wavetracker:', wavetracker.__version__)"
+python -c "import importlib.metadata, wavetracker; print('wavetracker version:', importlib.metadata.version('wavetracker'))"
 ```
 
 ---
