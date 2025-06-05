@@ -27,7 +27,8 @@ dependencies = [
     "thunderlab @ git+https://github.com/bendalab/thunderlab",
     "typer (>=0.15.1,<0.16.0)",
     "audioio @ git+https://github.com/bendalab/audioio",
-    "plottools @ git+https://github.com/bendalab/plottools"
+    "plottools @ git+https://github.com/bendalab/plottools",
+    "ipython>=9.3.0",
 ]
 
 [project.scripts]
