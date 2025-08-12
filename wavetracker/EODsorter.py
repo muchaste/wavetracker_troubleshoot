@@ -482,9 +482,10 @@ class PlotWidget:
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, folder=None, parent=None):
+    def __init__(self, folder=None, rec_datetime=None, parent=None):
         super(MainWindow, self).__init__(parent)
         self.folder = folder
+        self.rec_datetime = rec_datetime
         self.Plot = PlotWidget()
 
         self.Plot.figure.canvas.mpl_connect(
@@ -565,7 +566,8 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
 
         if self.folder != None:
-            self.folder = self.folder[:-1]
+            # self.folder = self.folder[:-1]
+            self.folder = self.folder.rstrip("/")
             self.open()
 
         self.Plot.canvas.draw()
@@ -1080,8 +1082,8 @@ class MainWindow(QMainWindow):
                 2000,
             ],
             aspect="auto",
-            vmin=-100,
-            vmax=-50,
+            #vmin=-100,
+            #vmax=-50,
             alpha=0.7,
             cmap="jet",
             interpolation="gaussian",
@@ -1115,37 +1117,6 @@ class MainWindow(QMainWindow):
             pass
 
     def open(self):
-        def get_datetime(folder):
-            rec_year, rec_month, rec_day, rec_time = os.path.split(
-                os.path.split(folder)[-1]
-            )[-1].split("-")
-            rec_year = int(rec_year)
-            rec_month = int(rec_month)
-            rec_day = int(rec_day)
-            try:
-                rec_time = [
-                    int(rec_time.split("_")[0]),
-                    int(rec_time.split("_")[1]),
-                    0,
-                ]
-            except:
-                rec_time = [
-                    int(rec_time.split(":")[0]),
-                    int(rec_time.split(":")[1]),
-                    0,
-                ]
-
-            rec_datetime = datetime.datetime(
-                year=rec_year,
-                month=rec_month,
-                day=rec_day,
-                hour=rec_time[0],
-                minute=rec_time[1],
-                second=rec_time[2],
-            )
-
-            return rec_datetime
-
         if self.folder == None:
             fd = QFileDialog()
             self.folder = fd.getExistingDirectory(self, "Select Directory")
@@ -1160,7 +1131,11 @@ class MainWindow(QMainWindow):
         print(self.folder)
         if self.folder != "":
             # self.folder = os.path.split(self.filename)[0]
-            self.rec_datetime = get_datetime(self.folder)
+            # self.rec_datetime = get_datetime(self.folder)
+            if not self.rec_datetime:
+                self.rec_datetime = datetime.datetime(2020, 1, 1, 0, 0, 0)  # fallback
+
+
             self.Plot.rec_datetime = self.rec_datetime
 
             self.channels = 16
@@ -1221,7 +1196,10 @@ class MainWindow(QMainWindow):
             self.cb_SCH_MCH.setCurrentIndex(1)
 
             self.got_multi_channel = True
-            self.rec_datetime = get_datetime(self.folder)
+            # self.rec_datetime = get_datetime(self.folder)
+            if not self.rec_datetime:
+                self.rec_datetime = datetime.datetime(2020, 1, 1, 0, 0, 0)  # fallback
+
 
         if os.path.exists(os.path.join(self.folder, "fill_spec.npy")):
             self.fill_freqs = np.load(
@@ -1322,8 +1300,8 @@ class MainWindow(QMainWindow):
                 2000,
             ],
             aspect="auto",
-            vmin=-100,
-            vmax=-50,
+            #vmin=-100,
+            #vmax=-50,
             alpha=0.7,
             cmap="jet",
             interpolation="gaussian",
@@ -1748,8 +1726,8 @@ class MainWindow(QMainWindow):
             ),
             extent=[xlim[0], xlim[1], ylim[0], ylim[1]],
             aspect="auto",
-            vmin=-100,
-            vmax=-50,
+            #vmin=-100,
+            #vmax=-50,
             alpha=0.7,
             cmap="jet",
             interpolation="gaussian",
@@ -1770,8 +1748,8 @@ class MainWindow(QMainWindow):
                 2000,
             ],
             aspect="auto",
-            vmin=-100,
-            vmax=-50,
+            #vmin=-100,
+            #vmax=-50,
             alpha=0.7,
             cmap="jet",
             interpolation="gaussian",
@@ -1829,14 +1807,29 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    print("test")
-    app = QApplication(sys.argv)  # create application
+    import datetime
+
+    print("Please enter the recording date and time:")
+    try:
+        year = int(input("Year (e.g., 2023): "))
+        month = int(input("Month (1–12): "))
+        day = int(input("Day (1–31): "))
+        hour = int(input("Hour (0–23): "))
+        minute = int(input("Minute (0–59): "))
+        second = int(input("Second (0–59): "))
+
+        rec_datetime = datetime.datetime(year, month, day, hour, minute, second)
+    except ValueError:
+        print("Invalid input. Using default datetime: 2020-01-01 00:00:00")
+        rec_datetime = datetime.datetime(2020, 1, 1, 0, 0, 0)
+
+    app = QApplication(sys.argv)   # create application
     folder = None if len(sys.argv) < 2 else sys.argv[1]
-    w = MainWindow(folder)  # create window
-    # p = PlotWidget()
+    w = MainWindow(folder=folder, rec_datetime=rec_datetime)  # create window
+    # p = PlotWidget()  
     w.show()
     sys.exit(app.exec_())  # exit if window is closed
-
+ 
 
 if __name__ == "__main__":
     main()

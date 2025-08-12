@@ -750,7 +750,7 @@ def main(folder):
     f_th = 2.5
     kde_th = None
     previous_valid_ids = np.array([])
-    n_fish = 2
+    n_fish = 20
 
     for i0 in np.arange(0, times[-1], int(stride * (1 - overlap))):
         kde_th, valid_ids = get_valid_ids_by_freq_dist(
@@ -900,9 +900,9 @@ def main(folder):
     ###################################################
 
     # save data
-    np.save(os.path.join(folder, "ident_v.npy"), ident_v)
-    np.save(os.path.join(folder, "idx_v.npy"), idx_v)
-    np.save(os.path.join(folder, "fund_v.npy"), fund_v)
+    #np.save(os.path.join(folder, "ident_v.npy"), ident_v)
+    #np.save(os.path.join(folder, "idx_v.npy"), idx_v)
+    #np.save(os.path.join(folder, "fund_v.npy"), fund_v)
 
 
 def cli():
