@@ -263,10 +263,8 @@ class AnalysisPipeline:
             for enu, snippet_data in enumerate(self.dataset):
                 t0_snip = time.time()
                 snippet_t0 = (
-                    self.Spec.itter_count
-                    * self.Spec.snippet_size
-                    / self.samplerate
-                ) + (self.Spec.snippet_overlap // 2) / self.samplerate
+                    self.Spec.itter_count * (self.Spec.snippet_size - self.Spec.snippet_overlap) / self.samplerate
+                )
 
                 self.logger.debug(f"Snippet {enu} t0: {snippet_t0:.2f}s")
 
