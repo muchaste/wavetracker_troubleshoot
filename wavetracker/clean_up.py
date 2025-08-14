@@ -733,7 +733,7 @@ def power_density_filter(valid_v, sign_v, ident_v, idx_v, fund_v, times):
     return valid_v
 
 
-def main(folder):
+def main(folder, n_fish=2):
     fund_v = np.load(os.path.join(folder, "fund_v.npy"))
     idx_v = np.load(os.path.join(folder, "idx_v.npy"))
     ident_v = np.load(os.path.join(folder, "ident_v.npy"))
@@ -750,7 +750,7 @@ def main(folder):
     f_th = 2.5
     kde_th = None
     previous_valid_ids = np.array([])
-    n_fish = 2
+    
 
     for i0 in np.arange(0, times[-1], int(stride * (1 - overlap))):
         kde_th, valid_ids = get_valid_ids_by_freq_dist(
@@ -842,7 +842,7 @@ def main(folder):
 
     # print(counts)
     # print(idents)
-    valid_idents = idents[-n_fish:]
+    valid_idents = idents[-n_fish:] 
     # print(valid_idents)
     # print(np.unique(valid_v))
 
@@ -913,12 +913,15 @@ def cli():
         type=Path,
         help="Path to directory of recording or to file to be analyzed",
     )
+    parser.add_argument(
+        "-n", "--n-fish",
+        type=int,
+        default=2,
+        help="Number of fish to track (default: 2)"
+    )
     args = parser.parse_args()
-    main(args.path)
+    main(args.path, args.n_fish)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 0:
-        main(sys.argv[1])
-    else:
-        main()
+   cli()
