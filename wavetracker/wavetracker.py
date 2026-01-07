@@ -433,6 +433,9 @@ def wavetracker(
     renew=False,
     nosave=False,
 ):
+    import cProfile
+    import os
+
     # STEP 0: Check if dataset is single file or directory of many .wav files
     file, folder = None, None
     if path.is_dir():
@@ -478,11 +481,10 @@ def wavetracker(
     )
 
     # STEP 4: Generate the torch iterator dataset object
-    # Just a better way to iterate through the dataset for spectrogram analysis
     dataset = MultiChannelAudioDataset(
         data_loader=data,
         block_size=better_snippet_size_samples,
-        noverlap=snippet_overlap,  # This is NOT the noverlap of the spectrogram!
+        noverlap=snippet_overlap,
     )
 
     # STEP 5: Generate the Spectrogram object
@@ -530,8 +532,14 @@ def wavetracker(
             False,
         )
 
-    # STEP 7: Run the analysis
-    analysis.run()
+    # STEP 7: Run the analysis with profiling
+    profile_output = os.path.join(save_path, "wavetracker_profile.prof")
+    print(f"[Profiler] Running analysis and saving profile to: {profile_output}")
+    with cProfile.Profile() as pr:
+        analysis.run()
+    pr.dump_stats(profile_output)
+    print(f"[Profiler] Profile saved to: {profile_output}")
+
 
 
 @app.command()

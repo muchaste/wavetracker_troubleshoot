@@ -900,9 +900,9 @@ def main(folder, n_fish=2):
     ###################################################
 
     # save data
-    np.save(os.path.join(folder, "ident_v.npy"), ident_v)
-    np.save(os.path.join(folder, "idx_v.npy"), idx_v)
-    np.save(os.path.join(folder, "fund_v.npy"), fund_v)
+    #np.save(os.path.join(folder, "ident_v.npy"), ident_v)
+    #np.save(os.path.join(folder, "idx_v.npy"), idx_v)
+    #np.save(os.path.join(folder, "fund_v.npy"), fund_v)
 
 
 def cli():
