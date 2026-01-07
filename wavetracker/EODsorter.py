@@ -662,9 +662,9 @@ class MainWindow(QMainWindow):
         self.Act_interactive_sel.setCheckable(True)
         self.Act_interactive_sel.setEnabled(False)
 
-        # self.Act_interactive_con = QAction(QIcon('./gui_sym/con.png'), 'Connect', self)
+        # self.Act_interactive_con = QAction(QIcon('./gui_sym/conn.png'), 'Connect', self)
         self.Act_interactive_con = QAction(
-            QIcon(os.path.join(package_dir, "gui_sym", "con.png")),
+            QIcon(os.path.join(package_dir, "gui_sym", "conn.png")),
             "Connect",
             self,
         )
@@ -1117,6 +1117,42 @@ class MainWindow(QMainWindow):
             pass
 
     def open(self):
+        def get_datetime(folder):
+            print(folder)
+            # rec_year, rec_month, rec_day, rec_time = os.path.split(
+            #     os.path.split(folder)[-1]
+            # )[-1].split("-")
+            # rec_year = int(rec_year)
+            # rec_month = int(rec_month)
+            # rec_day = int(rec_day)
+            # try:
+            #     rec_time = [
+            #         int(rec_time.split("_")[0]),
+            #         int(rec_time.split("_")[1]),
+            #         0,
+            #     ]
+            # except:
+            #     rec_time = [
+            #         int(rec_time.split(":")[0]),
+            #         int(rec_time.split(":")[1]),
+            #         0,
+            #     ]
+            print(
+                "Currently not working because not all folders have timestamp in name"
+            )
+            exit()
+
+            rec_datetime = datetime.datetime(
+                year=rec_year,
+                month=rec_month,
+                day=rec_day,
+                hour=rec_time[0],
+                minute=rec_time[1],
+                second=rec_time[2],
+            )
+
+            return rec_datetime
+
         if self.folder == None:
             fd = QFileDialog()
             self.folder = fd.getExistingDirectory(self, "Select Directory")
