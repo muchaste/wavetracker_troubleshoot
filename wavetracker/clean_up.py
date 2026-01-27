@@ -9,7 +9,8 @@ import numpy as np
 from matplotlib import gridspec
 from thunderlab.powerspectrum import decibel
 
-illustrate_cleanup = True
+illustrate_cleanup = False
+show_results = True
 
 
 def gauss(t, shift, sigma, size, norm=False):
@@ -780,7 +781,7 @@ def main(folder, n_fish=2):
         )
 
     ################### illustation ###################
-    if illustrate_cleanup:
+    if show_results:
         fig = plt.figure(figsize=(30 / 2.54, 18 / 2.54))
         gs = gridspec.GridSpec(
             1, 1, left=0.1, bottom=0.1, right=0.95, top=0.95
@@ -854,7 +855,7 @@ def main(folder, n_fish=2):
     ident_v[~np.isin(ident_v, valid_idents)] = np.nan
 
     ################### illustation ###################
-    if illustrate_cleanup:
+    if show_results:
         fig = plt.figure(figsize=(30 / 2.54, 18 / 2.54))
         gs = gridspec.GridSpec(
             1, 1, left=0.1, bottom=0.1, right=0.95, top=0.95
