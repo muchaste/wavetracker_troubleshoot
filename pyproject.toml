@@ -28,7 +28,7 @@ dependencies = [
     "typer (>=0.15.1,<0.16.0)",
     "audioio @ git+https://github.com/bendalab/audioio",
     "plottools @ git+https://github.com/bendalab/plottools",
-    "ipython>=9.3.0",
+    "ipython>=9.4.0",
 ]
 
 [project.scripts]
@@ -37,6 +37,8 @@ trackingGUI = "wavetracker.trackingGUI:main"
 wavetracker = "wavetracker.wavetracker:app"
 dataviewer = "wavetracker.dataviewer:main_UI"
 cleanup = "wavetracker.clean_up:cli"
+cleandatastructure = "wavetracker.clean_data_sidsel:main"
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
