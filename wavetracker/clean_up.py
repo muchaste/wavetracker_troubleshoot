@@ -136,7 +136,7 @@ def get_valid_ids_by_freq_dist(
         return None, old_valid_ids
 
     # TODO: min_freq & max_freq + buffer (.cfg)
-    convolve_f = np.arange(400, 1200, 0.1)
+    convolve_f = np.arange(300, 1200, 0.1)
     g = gauss(convolve_f, ff, sigma=2 * f_th, size=1, norm=True)
     kde = np.sum(g, axis=0)
 
