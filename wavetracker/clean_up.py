@@ -410,6 +410,10 @@ def connect_with_overlap(fund_v, ident_v, valid_v, idx_v, times, time_tol=5*60, 
 
     connections_candidates = np.array(connections_candidates)
 
+    # Return guard in case no pairs passed the initial overlap checks
+    if len(connections_candidates) == 0:
+        return ident_v
+
     for pair_no in np.argsort(connections_candidates[:, 2]):
         id0 = connections_candidates[pair_no, 0]
         id1 = connections_candidates[pair_no, 1]
